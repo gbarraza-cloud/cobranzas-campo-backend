@@ -190,7 +190,7 @@
 
     </main>
 
-    <!-- Diálogo Modal Configuración SMTP -->
+    <!-- Modal Configuración -->
     <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
@@ -244,9 +244,11 @@
         </div>
     </div>
 
-    <!-- Lógica JS Client Side de Envíos y Cruces -->
+    <!-- Lógica JavaScript -->
     <script>
+        // URL OFICIAL DEL SERVIDOR BACKEND NODE.JS EN RENDER
         const API_URL = 'https://cobranzas-campo-backend.onrender.com';
+        
         let globalClientesCruceMap = {};
         let globalHistorialData = [];
         let clienteSeleccionadoWPP = '';
@@ -480,7 +482,6 @@
             cargarHistorial();
         }
 
-        // FUNCIÓN MEJORADA DE ENVÍO DE CORREOS
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -585,7 +586,6 @@
             document.getElementById('kpi-promesas').innerText = promesas;
         }
 
-        // Cargar credenciales guardadas si existen
         const savedMail = localStorage.getItem('cfg_email');
         const savedSuc = localStorage.getItem('cfg_sucursal');
         if (savedMail) document.getElementById('cfg-email').value = savedMail;
