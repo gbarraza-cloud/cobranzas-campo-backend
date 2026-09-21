@@ -3,117 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma de Cobranzas - Campo y Asociados</title>
+    <title>Sistema de Cobranzas — Campo y Asociados</title>
     <!-- Tailwind CSS para el diseño -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .active-tab {
+            border-bottom: 3px solid #b80032;
+            color: #b80032;
+            font-weight: bold;
+        }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Encabezado Principal -->
-    <header class="bg-slate-900 text-white p-4 shadow-md">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wide">Campo y Asociados | Sistema Multisucursal de Cobranzas</h1>
-            <span class="bg-green-600 text-xs px-2 py-1 rounded-full font-semibold">Servidor en Nube Activo</span>
+    <!-- Header Principal -->
+    <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-bold tracking-wide">CAMPO Y ASOCIADOS | Módulo de Cobranzas</h1>
+                <p class="text-xs text-rose-400 font-semibold">Gestión Multisucursal de Saldos y Notificaciones Automáticas</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="mostrarAlertasUrgentes()" id="btn-notificaciones" class="relative bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2 transition-all">
+                    🔔 Alertas <span id="badge-alertas" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+                </button>
+                <span class="bg-green-600/20 text-green-400 border border-green-500/30 text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Nube Activa
+                </span>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto m-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Contenido Principal con Pestañas -->
+    <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
 
-        <!-- Formulario de Registro de Gestión -->
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-1">
-            <h2 class="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Registrar Gestión</h2>
+        <!-- NAVEGACIÓN POR PESTAÑAS (Igual que en Java) -->
+        <nav class="flex border-b border-slate-200 bg-white rounded-t-lg shadow-sm overflow-x-auto mb-6">
+            <button onclick="cambiarPestana('pestana-registro')" id="tab-registro" class="active-tab px-5 py-3 text-sm flex items-center gap-2 whitespace-nowrap">
+                📝 Registrar Gestión
+            </button>
+            <button onclick="cambiarPestana('pestana-historial')" id="tab-historial" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                📋 Historial y Auditoría
+            </button>
+            <button onclick="cambiarPestana('pestana-calendario')" id="tab-calendario" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                📅 Calendario de Promesas
+            </button>
+            <button onclick="cambiarPestana('pestana-metricas')" id="tab-metricas" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                📊 Panel de Métricas / KPIs
+            </button>
+        </nav>
+
+        <!-- 1. PESTAÑA: REGISTRAR GESTIÓN Y WHATSAPP -->
+        <div id="pestana-registro" class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <form id="form-gestion" class="space-y-4">
+            <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-1">
+                <h2 class="text-base font-bold text-slate-900 border-b pb-2 mb-4 text-rose-800">Nueva Carga de Gestión</h2>
+                
+                <form id="form-gestion" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Sucursal ID</label>
+                            <input type="number" id="sucursal_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Cliente ID</label>
+                            <input type="number" id="cliente_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono (WhatsApp)</label>
+                        <input type="text" id="telefono_cliente" placeholder="Ej: 5492392123456" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Canal de Contacto</label>
+                        <select id="canal" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
+                            <option value="WhatsApp">WhatsApp</option>
+                            <option value="Email">Correo Electrónico</option>
+                            <option value="Llamada">Llamada Telefónica</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estado de la Gestión</label>
+                        <select id="estado_gestion" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none" onchange="toggleFechaPromesa()">
+                            <option value="Promesa de Pago">⏳ Promesa de Pago</option>
+                            <option value="En Negociacion">💬 En Negociación</option>
+                            <option value="Cobrado">💰 Cobrado / Liquidado</option>
+                            <option value="Sin Respuesta">⚠️ Sin Respuesta</option>
+                        </select>
+                    </div>
+
+                    <div id="contenedor-fecha-promesa">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Promesa de Pago</label>
+                        <input type="date" id="fecha_promesa_pago" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Observaciones / Detalle</label>
+                        <textarea id="notas_observaciones" rows="3" placeholder="Detalles del acuerdo o conversación..." class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none"></textarea>
+                    </div>
+
+                    <div class="flex flex-col gap-2 pt-2">
+                        <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded transition-colors text-sm shadow-sm">
+                            💾 Guardar Gestión en PostgreSQL
+                        </button>
+                        <button type="button" onclick="enviarWppDirecto()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded transition-colors text-sm shadow-sm flex items-center justify-center gap-2">
+                            📲 Abrir y Enviar por WhatsApp
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="mensaje-estado" class="mt-3 text-xs text-center hidden p-2 rounded"></div>
+            </section>
+
+            <!-- Panel informativo de cuentas oficiales para transferencias -->
+            <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-2 flex flex-col justify-between">
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Sucursal ID</label>
-                    <input type="number" id="sucursal_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                    <h2 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">Cuentas Bancarias Habilitadas (Información para WhatsApp)</h2>
+                    <p class="text-xs text-slate-600 mb-4">Estas cuentas se incluyen automáticamente en la plantilla oficial de mensaje enviada por WhatsApp al cliente:</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div class="p-3 bg-slate-50 border rounded-lg">
+                            <span class="font-bold text-slate-800 block">Banco Provincia</span>
+                            <span class="text-slate-500">CBU: 0140004501400401879785</span>
+                            <span class="text-rose-700 font-bold block mt-1">Alias: HOJOBAR.PROV.BSAS</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 border rounded-lg">
+                            <span class="font-bold text-slate-800 block">Banco Nación</span>
+                            <span class="text-slate-500">CBU: 0110656120065600157682</span>
+                            <span class="text-rose-700 font-bold block mt-1">Alias: HOJOBAR.NACION</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 border rounded-lg">
+                            <span class="font-bold text-slate-800 block">Banco Galicia</span>
+                            <span class="text-slate-500">CBU: 0070002320000013509877</span>
+                            <span class="text-rose-700 font-bold block mt-1">Alias: HOJOBAR.GALICIA</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 border rounded-lg">
+                            <span class="font-bold text-slate-800 block">Banco Macro</span>
+                            <span class="text-slate-500">CBU: 2850302630094249709711</span>
+                            <span class="text-rose-700 font-bold block mt-1">Alias: HOJOBAR.MACRO</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Cliente ID</label>
-                    <input type="number" id="cliente_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <h3 class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1">💡 Recomendación para Operadores</h3>
+                    <p class="text-xs text-amber-800 leading-relaxed">
+                        Al presionar <strong>"Abrir y Enviar por WhatsApp"</strong>, el sistema abrirá el chat con el cliente cargando el mensaje preformateado. Luego de enviar el mensaje, guarda la gestión en la nube para mantener actualizado el historial unificado de la Casa Central.
+                    </p>
                 </div>
+            </section>
+        </div>
 
+        <!-- 2. PESTAÑA: HISTORIAL Y AUDITORÍA -->
+        <div id="pestana-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Canal de Contacto</label>
-                    <select id="canal" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
-                        <option value="WhatsApp">WhatsApp</option>
-                        <option value="Email">Correo Electrónico</option>
-                        <option value="Llamada">Llamada Telefónica</option>
-                    </select>
+                    <h2 class="text-base font-bold text-slate-900">Historial de Eventos y Registros General</h2>
+                    <p class="text-xs text-slate-500">Auditoría centralizada en tiempo real almacenada en PostgreSQL.</p>
                 </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Estado de la Gestión</label>
-                    <select id="estado_gestion" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
-                        <option value="Promesa de Pago">Promesa de Pago</option>
-                        <option value="En Negociacion">En Negociación</option>
-                        <option value="Cobrado">Cobrado / Liquidado</option>
-                        <option value="Reclamo">Reclamo / Disconformidad</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Fecha Promesa de Pago</label>
-                    <input type="date" id="fecha_promesa_pago" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Observaciones / Comentarios</label>
-                    <textarea id="notas_observaciones" rows="3" placeholder="Detalles de la conversación..." class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none"></textarea>
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors text-sm">
-                    Guardar Gestión en Nube
-                </button>
-            </form>
-            
-            <div id="mensaje-estado" class="mt-3 text-xs text-center hidden"></div>
-        </section>
-
-        <!-- Panel de Historial y Auditoría Casa Central -->
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-2">
-            <div class="flex justify-between items-center border-b pb-2 mb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Historial de Eventos y Auditoría</h2>
-                <button onclick="cargarHistorial()" class="text-xs bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded transition-colors">
-                    🔄 Actualizar
+                <button onclick="cargarHistorial()" class="text-xs bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
+                    🔄 Actualizar Historial
                 </button>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-slate-600">
-                    <thead class="bg-slate-50 uppercase text-slate-500 border-b">
+                    <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
                         <tr>
-                            <th class="p-2">Fecha</th>
-                            <th class="p-2">Sucursal</th>
-                            <th class="p-2">Cliente</th>
-                            <th class="p-2">Canal</th>
-                            <th class="p-2">Estado</th>
-                            <th class="p-2">Promesa</th>
+                            <th class="p-3">Fecha / Hora</th>
+                            <th class="p-3">Sucursal</th>
+                            <th class="p-3">Cliente ID</th>
+                            <th class="p-3">Canal</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Promesa de Pago</th>
+                            <th class="p-3">Observaciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-historial">
                         <tr>
-                            <td colspan="6" class="p-4 text-center text-slate-400">Cargando registros del servidor en la nube...</td>
+                            <td colspan="7" class="p-4 text-center text-slate-400">Cargando registros del servidor en la nube...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-        </section>
+        </div>
+
+        <!-- 3. PESTAÑA: CALENDARIO DE PROMESAS -->
+        <div id="pestana-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div class="border-b pb-4 mb-4">
+                <h2 class="text-base font-bold text-slate-900">Calendario de Agendamiento y Compromisos</h2>
+                <p class="text-xs text-slate-500">Visualiza rápidamente las fechas fijadas para vencimientos de promesas de pago.</p>
+            </div>
+
+            <div id="contenedor-calendario" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Seleccionar Fecha para Consultar:</label>
+                    <input type="date" id="filtro-fecha-calendario" onchange="filtrarPorFechaCalendario()" class="border rounded p-2 text-sm w-full focus:ring-2 focus:ring-rose-800 outline-none">
+                </div>
+                <div class="bg-slate-50 p-4 rounded-lg border">
+                    <h3 class="text-xs font-bold text-slate-800 mb-2" id="titulo-dia-calendario">Promesas Agendadas para Hoy</h3>
+                    <ul id="lista-promesas-dia" class="text-xs space-y-2 text-slate-600">
+                        <li class="text-slate-400 italic">Selecciona una fecha para consultar sus compromisos.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. PESTAÑA: PANEL DE MÉTRICAS / KPIS -->
+        <div id="pestana-metricas" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-5 rounded-lg border shadow-sm">
+                    <span class="text-xs font-bold text-slate-500 uppercase block mb-1">Total Gestiones Registradas</span>
+                    <span class="text-2xl font-black text-slate-900" id="kpi-total">0</span>
+                </div>
+                <div class="bg-white p-5 rounded-lg border shadow-sm border-l-4 border-l-emerald-500">
+                    <span class="text-xs font-bold text-emerald-700 uppercase block mb-1">Cobrados / Liquidados</span>
+                    <span class="text-2xl font-black text-emerald-600" id="kpi-cobrados">0</span>
+                </div>
+                <div class="bg-white p-5 rounded-lg border shadow-sm border-l-4 border-l-amber-500">
+                    <span class="text-xs font-bold text-amber-700 uppercase block mb-1">Promesas de Pago Activas</span>
+                    <span class="text-2xl font-black text-amber-600" id="kpi-promesas">0</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg border shadow-sm">
+                <h3 class="text-sm font-bold text-slate-900 mb-3">Recomendación de Gestión Operativa</h3>
+                <div id="resumen-ejecutivo" class="text-xs text-slate-600 space-y-2 leading-relaxed bg-slate-50 p-4 rounded border">
+                    Cargando métricas del sistema...
+                </div>
+            </div>
+        </div>
 
     </main>
 
-    <!-- Conexión y Lógica Backend en Render -->
-    <script>
-        const API_URL = 'https://cobranzas-campo-backend.onrender.com';
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-4 text-center border-t border-slate-800">
+        Campo y Asociados — Sistema de Cobranzas Automáticas | Todos los derechos reservados.
+    </footer>
 
-        // 1. Guardar una nueva gestión
+    <!-- Lógica JavaScript Principal -->
+    <script>
+        // URL de tu Backend en Render
+        const API_URL = 'https://cobranzas-campo-backend.onrender.com';
+        let datosHistorialGlobal = [];
+
+        // Cambiar entre pestañas
+        function cambiarPestana(idPestana) {
+            ['pestana-registro', 'pestana-historial', 'pestana-calendario', 'pestana-metricas'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            ['tab-registro', 'tab-historial', 'tab-calendario', 'tab-metricas'].forEach(id => {
+                document.getElementById(id).classList.remove('active-tab');
+            });
+
+            document.getElementById(idPestana).classList.remove('hidden');
+            document.getElementById('tab-' + idPestana.replace('pestana-', '')).classList.add('active-tab');
+
+            if (idPestana === 'pestana-metricas') actualizarMetricas();
+        }
+
+        // Mostrar / Ocultar campo fecha de promesa segun estado
+        function toggleFechaPromesa() {
+            const estado = document.getElementById('estado_gestion').value;
+            const contenedor = document.getElementById('contenedor-fecha-promesa');
+            if (estado === 'Promesa de Pago') {
+                contenedor.classList.remove('hidden');
+            } else {
+                contenedor.classList.add('hidden');
+            }
+        }
+
+        // 1. Guardar Gestión en la Base de Datos
         document.getElementById('form-gestion').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const mensajeDiv = document.getElementById('mensaje-estado');
-            mensajeDiv.className = 'mt-3 text-xs text-center text-blue-600 block';
-            mensajeDiv.innerText = 'Conectando con el servidor en Render...';
+            mensajeDiv.className = 'mt-3 text-xs text-center text-blue-700 bg-blue-50 block';
+            mensajeDiv.innerText = 'Guardando registro en la nube...';
 
             const gestionData = {
                 sucursal_id: parseInt(document.getElementById('sucursal_id').value) || 1,
@@ -134,51 +304,154 @@
                 const resultado = await respuesta.json();
 
                 if (respuesta.ok && resultado.exito) {
-                    mensajeDiv.className = 'mt-3 text-xs text-center text-green-600 font-semibold block';
-                    mensajeDiv.innerText = '¡Gestión registrada con éxito!';
+                    mensajeDiv.className = 'mt-3 text-xs text-center text-green-700 bg-green-50 font-semibold block';
+                    mensajeDiv.innerText = '¡Gestión registrada con éxito en PostgreSQL!';
                     document.getElementById('notas_observaciones').value = '';
                     cargarHistorial();
                 } else {
-                    throw new Error(resultado.error || 'Error en respuesta de servidor');
+                    throw new Error(resultado.error || 'Error al guardar');
                 }
             } catch (error) {
-                mensajeDiv.className = 'mt-3 text-xs text-center text-red-600 font-semibold block';
-                mensajeDiv.innerText = 'Reintentando conexión con la base de datos...';
-                console.error('Error:', error);
+                mensajeDiv.className = 'mt-3 text-xs text-center text-red-700 bg-red-50 font-semibold block';
+                mensajeDiv.innerText = 'Error al conectar con la base de datos.';
             }
         });
 
-        // 2. Cargar el historial desde PostgreSQL en Render
+        // 2. Enviar mensaje por WhatsApp formato oficial wa.me
+        function enviarWppDirecto() {
+            const tel = document.getElementById('telefono_cliente').value.replace(/[^0-9]/g, '');
+            const clienteId = document.getElementById('cliente_id').value;
+            const notas = document.getElementById('notas_observaciones').value;
+
+            if (!tel) {
+                alert('Por favor ingrese un número de teléfono válido para WhatsApp.');
+                return;
+            }
+
+            const mensaje = `*CAMPO Y ASOCIADOS*\n` +
+                `──────────────────────────────\n` +
+                `Estimado cliente (ID: *${clienteId}*):\n\n` +
+                `Le enviamos el resumen correspondiente a su estado de cuenta.\n\n` +
+                `*Cuentas Habilitadas para Transferencia Bancaria:*\n` +
+                `• Banco Provincia Alias: *HOJOBAR.PROV.BSAS*\n` +
+                `• Banco Nación Alias: *HOJOBAR.NACION*\n` +
+                `• Banco Galicia Alias: *HOJOBAR.GALICIA*\n` +
+                `• Banco Macro Alias: *HOJOBAR.MACRO*\n\n` +
+                `*Observaciones de Gestión:* ${notas || 'Sin observaciones'}\n\n` +
+                `Por favor, recuerde enviar el comprobante de pago por este medio. Muchas gracias.`;
+
+            const url = `https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+        }
+
+        // 3. Cargar el Historial
         async function cargarHistorial() {
             const tabla = document.getElementById('tabla-historial');
             
             try {
                 const respuesta = await fetch(`${API_URL}/api/historial`);
                 const datos = await respuesta.json();
+                datosHistorialGlobal = datos;
 
                 if (!Array.isArray(datos) || datos.length === 0) {
-                    tabla.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay gestiones registradas aún. ¡Agrega la primera!</td></tr>`;
+                    tabla.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No hay gestiones registradas aún.</td></tr>`;
                     return;
                 }
 
                 tabla.innerHTML = datos.map(item => `
                     <tr class="border-b hover:bg-slate-50">
-                        <td class="p-2">${item.fecha_registro ? new Date(item.fecha_registro).toLocaleString('es-AR') : '-'}</td>
-                        <td class="p-2 font-medium">Sucursal ${item.sucursal_id || 1}</td>
-                        <td class="p-2">Cliente ID ${item.cliente_id || 1}</td>
-                        <td class="p-2"><span class="bg-slate-100 px-2 py-0.5 rounded text-slate-700">${item.canal || 'N/A'}</span></td>
-                        <td class="p-2 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion || 'Registrado'}</td>
-                        <td class="p-2">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
+                        <td class="p-3">${item.fecha_registro ? new Date(item.fecha_registro).toLocaleString('es-AR') : '-'}</td>
+                        <td class="p-3 font-semibold text-slate-800">Sucursal ${item.sucursal_id || 1}</td>
+                        <td class="p-3">Cliente ID ${item.cliente_id || 1}</td>
+                        <td class="p-3"><span class="bg-slate-100 px-2 py-0.5 rounded text-slate-700">${item.canal || 'N/A'}</span></td>
+                        <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion || 'Registrado'}</td>
+                        <td class="p-3">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
+                        <td class="p-3 text-slate-500">${item.notas_observaciones || '-'}</td>
                     </tr>
                 `).join('');
 
+                actualizarAlertas();
+
             } catch (error) {
-                tabla.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-amber-600">Servidor en modo de espera. Presiona "🔄 Actualizar" en unos segundos.</td></tr>`;
-                console.error('Error:', error);
+                tabla.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-amber-600">Servidor conectando... Haz clic en "Actualizar Historial" en unos segundos.</td></tr>`;
             }
         }
 
-        // Cargar registros automáticamente al iniciar
+        // 4. Filtrar Promesas en el Calendario
+        function filtrarPorFechaCalendario() {
+            const fechaSel = document.getElementById('filtro-fecha-calendario').value;
+            const lista = document.getElementById('lista-promesas-dia');
+            const titulo = document.getElementById('titulo-dia-calendario');
+
+            if (!fechaSel) return;
+
+            titulo.innerText = `Promesas Agendadas para ${new Date(fechaSel + 'T00:00:00').toLocaleDateString('es-AR')}`;
+
+            const coincidencias = datosHistorialGlobal.filter(item => {
+                if (!item.fecha_promesa_pago) return false;
+                const fItem = new Date(item.fecha_promesa_pago).toISOString().split('T')[0];
+                return fItem === fechaSel;
+            });
+
+            if (coincidencias.length === 0) {
+                lista.innerHTML = `<li class="text-slate-400 italic">No hay promesas de pago agendadas para esta fecha.</li>`;
+                return;
+            }
+
+            lista.innerHTML = coincidencias.map(c => `
+                <li class="p-2.5 bg-white border rounded shadow-sm">
+                    <span class="font-bold text-slate-800">Cliente ID ${c.cliente_id}</span> — Sucursal ${c.sucursal_id}
+                    <p class="text-slate-500 mt-0.5">${c.notas_observaciones || 'Sin nota'}</p>
+                </li>
+            `).join('');
+        }
+
+        // 5. Métricas y KPIs
+        function actualizarMetricas() {
+            const total = datosHistorialGlobal.length;
+            const cobrados = datosHistorialGlobal.filter(d => d.estado_gestion === 'Cobrado').length;
+            const promesas = datosHistorialGlobal.filter(d => d.estado_gestion === 'Promesa de Pago').length;
+
+            document.getElementById('kpi-total').innerText = total;
+            document.getElementById('kpi-cobrados').innerText = cobrados;
+            document.getElementById('kpi-promesas').innerText = promesas;
+
+            document.getElementById('resumen-ejecutivo').innerHTML = `
+                • <strong>Total de eventos registrados:</strong> ${total}<br>
+                • <strong>Efectividad de Cobro Directo:</strong> ${total > 0 ? ((cobrados/total)*100).toFixed(1) : 0}%<br>
+                • <strong>Promesas de Pago Agendadas Activas:</strong> ${promesas} compromisos pendientes.
+            `;
+        }
+
+        // 6. Alertas con Campanita
+        function actualizarAlertas() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const vencidas = datosHistorialGlobal.filter(item => {
+                if (!item.fecha_promesa_pago || item.estado_gestion === 'Cobrado') return false;
+                const fItem = new Date(item.fecha_promesa_pago).toISOString().split('T')[0];
+                return fItem <= hoy;
+            });
+
+            const badge = document.getElementById('badge-alertas');
+            badge.innerText = vencidas.length;
+        }
+
+        function mostrarAlertasUrgentes() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const vencidas = datosHistorialGlobal.filter(item => {
+                if (!item.fecha_promesa_pago || item.estado_gestion === 'Cobrado') return false;
+                const fItem = new Date(item.fecha_promesa_pago).toISOString().split('T')[0];
+                return fItem <= hoy;
+            });
+
+            if (vencidas.length === 0) {
+                alert('✅ No hay alertas de promesas de pago vencidas pendientes.');
+            } else {
+                alert(`🚨 ATENCIÓN: Hay ${vencidas.length} promesas de pago vencidas o que vencen hoy. Revisa el historial para recontactar.`);
+            }
+        }
+
+        // Cargar datos al iniciar la app
         cargarHistorial();
     </script>
 </body>
