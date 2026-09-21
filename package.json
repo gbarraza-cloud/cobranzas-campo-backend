@@ -1,6 +1,7 @@
 {
-  "name": "backend-cobranzas",
+  "name": "cobranzas-campo-backend",
   "version": "1.0.0",
+  "description": "Sistema Multisucursal de Cobranzas Automáticas — Campo y Asociados",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,5 +13,8 @@
     "mailparser": "^3.6.5",
     "nodemailer": "^6.9.7",
     "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
