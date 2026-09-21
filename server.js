@@ -2,23 +2,11 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const Imap = require('imap');
-const { simpleParser } = require('mailparser');
 
 const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-const SUCURSALES_OFICIALES = [
-  "CASA CENTRAL", "30 DE AGOSTO", "25 DE MAYO", "AMERICA", "ARROYITO", "AYACUCHO", "AZUL",
-  "BALCARCE", "BENITO JUAREZ", "CACHARI", "CARHUE", "CARLOS CASARES",
-  "CARLOS TEJEDOR", "CHIVILCOY", "CORONEL SUAREZ", "DAIREAUX", "GRAL.ALVEAR",
-  "GRAL.PICO", "GRAL.PINTO", "GRAL.VILLEGAS", "INT. ALVEAR", "LA MADRID",
-  "LAPRIDA", "LAS FLORES", "LINCOLN", "MADARIAGA", "MONES CAZON", "MORTEROS",
-  "OLAVARRIA", "PEHUAJO", "RAUCH", "RIO IV", "SANTA FE", "T.LAUQUEN",
-  "TANDIL", "TAPALQUE", "TRES ARROYOS", "VENADO TUERTO", "VILLA MARIA", "VILLA MERCEDES"
-];
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -60,26 +48,26 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Esquema PostgreSQL inicializado y verificado correctamente.');
+    console.log('✅ Tablas verificadas e inicializadas en PostgreSQL.');
   } catch (err) {
-    console.error('❌ Error iniciando tablas en DB:', err.message);
+    console.error('❌ Error al inicializar DB:', err.message);
   }
 }
 
-// Generador exacto del HTML del Email
 function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   let totalDeuda = 0.0;
-  const filasFacturas = facturas.map(f => {
-    totalDeuda += parseFloat(f.monto) || 0.0;
+  const filas = (facturas || []).map(f => {
+    const montoNum = parseFloat(f.monto) || 0.0;
+    totalDeuda += montoNum;
     return `
       <tr style='border-bottom: 1px solid #e2e8f0;'>
-        <td style='padding: 10px;'>${f.cliente || cliente}</td>
-        <td style='padding: 10px;'>${f.empresa || '—'}</td>
-        <td style='padding: 10px;'>${f.comprobante || '—'}</td>
-        <td style='padding: 10px; text-align: center;'>${f.fechaComp || '—'}</td>
-        <td style='padding: 10px; text-align: center;'>${f.fechaVenc || '—'}</td>
-        <td style='padding: 10px; text-align: center;'>${f.moneda || 'ARS'}</td>
-        <td style='padding: 10px; text-align: right; font-weight: bold;'>$${(parseFloat(f.monto)||0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td style='padding: 8px;'>${f.cliente || cliente}</td>
+        <td style='padding: 8px;'>${f.empresa || '—'}</td>
+        <td style='padding: 8px;'>${f.comprobante || '—'}</td>
+        <td style='padding: 8px; text-align: center;'>${f.fechaComp || '—'}</td>
+        <td style='padding: 8px; text-align: center;'>${f.fechaVenc || '—'}</td>
+        <td style='padding: 8px; text-align: center;'>${f.moneda || 'ARS'}</td>
+        <td style='padding: 8px; text-align: right; font-weight: bold;'>$${montoNum.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
       </tr>`;
   }).join('');
 
@@ -113,7 +101,7 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   <th style='padding: 10px; text-align: center;'>Moneda</th>
   <th style='padding: 10px; text-align: right;'>Importe Ppal</th>
   </tr></thead>
-  <tbody>${filasFacturas}</tbody>
+  <tbody>${filas}</tbody>
   <tfoot><tr style='background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #b80032;'>
   <td colspan='6' style='padding: 12px; text-align: right; color: #141414;'>TOTAL DEUDA PENDIENTE</td>
   <td style='padding: 12px; text-align: right; color: #b80032; font-size: 14px;'>$${totalDeuda.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
@@ -137,7 +125,7 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Probar conexión SMTP
+// 1. Probar SMTP
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
@@ -152,11 +140,11 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// Enviar Correos Masivos
+// 2. Envío Masivo
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
-    return res.status(400).json({ exito: false, error: 'Credenciales incompletas' });
+    return res.status(400).json({ exito: false, error: 'Credenciales SMTP incompletas.' });
   }
 
   const transporter = nodemailer.createTransport({
@@ -200,7 +188,7 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
   res.json({ exito: true, enviados, errores });
 });
 
-// Endpoints Historial y Gestiones WPP
+// 3. Historial y Gestiones
 app.get('/api/historial', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
@@ -221,7 +209,6 @@ app.post('/api/gestiones', async (req, res) => {
       [sucursal || 'CASA CENTRAL', cliente_nombre, cuit || '—', canal, estado_gestion, promesa, notas_observaciones, monto_deuda || 0]
     );
 
-    // Si la gestión viene de WPP guardar también en su tabla
     if (canal === 'WhatsApp') {
       await pool.query(
         `INSERT INTO gestion_whatsapp (cliente_key, estado, fecha_promesa, notas) 
@@ -234,15 +221,6 @@ app.post('/api/gestiones', async (req, res) => {
     res.status(201).json({ exito: true, gestion: resultado.rows[0] });
   } catch (err) {
     res.status(500).json({ exito: false, error: err.message });
-  }
-});
-
-app.get('/api/gestion-wpp', async (req, res) => {
-  try {
-    const resu = await pool.query('SELECT * FROM gestion_whatsapp');
-    res.json(resu.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 
