@@ -3,27 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Módulo de Cobranzas Automáticas — Campo y Asociados</title>
+    <title>Sistema de Cobranzas Automáticas — Campo y Asociados</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .active-tab {
-            border-bottom: 3px solid #b80032;
-            color: #b80032;
-            font-weight: bold;
-        }
+        .active-tab { border-bottom: 3px solid #b80032; color: #b80032; font-weight: bold; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header Principal Corporativo -->
+    <!-- Header Corporativo -->
     <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h1 class="text-xl font-bold tracking-wide">CAMPO & ASOCIADOS | Módulo de Cobranzas</h1>
-                <p id="subtitulo-header" class="text-xs text-rose-400 font-semibold">SUCURSAL: CASA CENTRAL | Gestión de Saldos y Envíos Automáticos</p>
+                <p id="subtitulo-header" class="text-xs text-rose-400 font-semibold">MÓDULO DE COBRANZAS — CASA CENTRAL</p>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="mostrarPopUpNotificaciones()" class="relative bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2">
+                <button onclick="mostrarPopUpNotificaciones()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2">
                     🔔 Alertas <span id="badge-notificaciones" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
                 </button>
                 <button onclick="abrirConfiguracion()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 font-semibold flex items-center gap-1">
@@ -33,7 +29,7 @@
         </div>
     </header>
 
-    <!-- Contenido Principal con Pestañas -->
+    <!-- Pestañas Principales (Swing JTabbedPane) -->
     <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
 
         <nav class="flex border-b border-slate-200 bg-white rounded-t-lg shadow-sm overflow-x-auto mb-6">
@@ -54,18 +50,18 @@
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE DE CSVs -->
+        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="p-4 bg-slate-50 border rounded-lg">
-                        <label class="block text-xs font-bold text-slate-800 mb-1">1. Reporte de Deudas General (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded">OBLIGATORIO</span></label>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">1. Reporte de Deudas General (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded font-bold">OBLIGATORIO</span></label>
                         <input type="file" id="csv-deudas" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white cursor-pointer">
                     </div>
                     <div class="p-4 bg-slate-50 border rounded-lg">
-                        <label class="block text-xs font-bold text-slate-800 mb-1">2. Base Clientes (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded">OBLIGATORIO</span></label>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">2. Base Clientes (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded font-bold">OBLIGATORIO</span></label>
                         <input type="file" id="csv-clientes" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white cursor-pointer">
                     </div>
                 </div>
@@ -123,7 +119,7 @@
                             <th class="p-2.5">Deuda Total</th>
                             <th class="p-2.5">Teléfono</th>
                             <th class="p-2.5">Enviar WhatsApp</th>
-                            <th class="p-2.5">Gestionar</th>
+                            <th class="p-2.5">Gestionar WPP</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-omitidos-cuerpo">
@@ -133,7 +129,7 @@
             </div>
         </div>
 
-        <!-- 3. PESTAÑA: HISTORIAL GENERAL -->
+        <!-- 3. PESTAÑA: HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -194,7 +190,7 @@
 
     </main>
 
-    <!-- Diálogo de Configuración SMTP / Sucursal -->
+    <!-- Diálogo Modal Configuración SMTP -->
     <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
@@ -205,7 +201,7 @@
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">Correo Gmail Remitente:</label>
-                    <input type="email" id="cfg-email" placeholder="ejemplo@campoyasociados.com" class="w-full border rounded p-2">
+                    <input type="email" id="cfg-email" placeholder="ejemplo@gmail.com" class="w-full border rounded p-2">
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">Contraseña de Aplicación Gmail (Token):</label>
@@ -219,11 +215,41 @@
         </div>
     </div>
 
-    <!-- Lógica JS Client Side -->
+    <!-- Modal Registrar Gestión WPP -->
+    <div id="modal-gestion-wpp" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4" id="wpp-modal-titulo">Registrar Gestión WPP</h3>
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Estado de Gestión:</label>
+                    <select id="wpp-estado" class="w-full border rounded p-2">
+                        <option value="⏳ PROMESA DE PAGO WPP">⏳ PROMESA DE PAGO WPP</option>
+                        <option value="📲 RESPONDIDO POR WPP">📲 RESPONDIDO POR WPP</option>
+                        <option value="💰 PAGO INFORMADO WPP">💰 PAGO INFORMADO WPP</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Fecha Promesa de Pago:</label>
+                    <input type="date" id="wpp-fecha-promesa" class="w-full border rounded p-2">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Observaciones / Notas:</label>
+                    <textarea id="wpp-notas" rows="3" class="w-full border rounded p-2"></textarea>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="cerrarModalWPP()" class="px-3 py-1.5 text-xs bg-slate-200 rounded">Cancelar</button>
+                <button onclick="guardarGestionWPPModal()" class="px-3 py-1.5 text-xs bg-rose-800 text-white rounded font-bold">Guardar Gestión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lógica JS Client Side (Parsers + Cruces + Métricas) -->
     <script>
         const API_URL = 'https://cobranzas-campo-backend.onrender.com';
         let globalClientesCruceMap = {};
         let globalHistorialData = [];
+        let clienteSeleccionadoWPP = '';
 
         function cambiarPestana(idTab) {
             ['tab-masivo', 'tab-omitidos', 'tab-historial', 'tab-calendario', 'tab-metricas'].forEach(id => {
@@ -237,24 +263,33 @@
             document.getElementById('nav-' + idTab.replace('tab-', '')).classList.add('active-tab');
         }
 
-        // Configuración
         function abrirConfiguracion() { document.getElementById('modal-config').classList.remove('hidden'); }
         function cerrarConfiguracion() { document.getElementById('modal-config').classList.add('hidden'); }
-        function guardarConfiguracion() {
+        
+        async function guardarConfiguracion() {
             const suc = document.getElementById('cfg-sucursal').value;
             const mail = document.getElementById('cfg-email').value;
             const pass = document.getElementById('cfg-pass').value;
 
-            localStorage.setItem('cfg_sucursal', suc);
-            localStorage.setItem('cfg_email', mail);
-            localStorage.setItem('cfg_pass', pass);
+            const res = await fetch(`${API_URL}/api/test-smtp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mail, pass })
+            });
+            const data = await res.json();
 
-            document.getElementById('subtitulo-header').innerText = `SUCURSAL: ${suc.toUpperCase()} | Remitente: ${mail}`;
-            cerrarConfiguracion();
-            alert('✅ Configuración guardada correctamente.');
+            if (data.exito) {
+                localStorage.setItem('cfg_sucursal', suc);
+                localStorage.setItem('cfg_email', mail);
+                localStorage.setItem('cfg_pass', pass);
+                document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${suc.toUpperCase()} | Remitente: ${mail}`;
+                cerrarConfiguracion();
+                alert('✅ Credenciales SMTP validadas y guardadas.');
+            } else {
+                alert('❌ Error de autenticación en Gmail: ' + data.error);
+            }
         }
 
-        // Parsear CSV Clientes y Deudas
         async function procesarArchivosCSV(marcarTodos) {
             const fileDeudas = document.getElementById('csv-deudas').files[0];
             const fileClientes = document.getElementById('csv-clientes').files[0];
@@ -267,47 +302,97 @@
             const txtDeudas = await fileDeudas.text();
             const txtClientes = await fileClientes.text();
 
-            const baseClientes = parsearCSVClientes(txtClientes);
+            const baseClientes = parsearCSVClientesFlex(txtClientes);
             globalClientesCruceMap = parsearCSVDeudas(txtDeudas, baseClientes);
 
             renderizarTablaCruce(marcarTodos);
             renderizarTablaOmitidos();
         }
 
-        function parsearCSVClientes(texto) {
-            const lineas = texto.split('\n');
+        // Parser Inteligente de Base Clientes (Igual a Java Swing)
+        function parsearCSVClientesFlex(texto) {
+            const lineas = texto.split(/\r?\n/);
             const mapa = {};
+
             for (let i = 1; i < lineas.length; i++) {
                 if (!lineas[i].trim()) continue;
-                const col = lineas[i].includes(';') ? lineas[i].split(';') : lineas[i].split(',');
-                if (col.length >= 2) {
-                    const cli = col[0].replace(/"/g, '').trim().toUpperCase();
-                    const cuit = col[1] ? col[1].replace(/"/g, '').trim() : '—';
-                    const email = col.find(c => c.includes('@')) ? col.find(c => c.includes('@')).replace(/"/g, '').trim() : '';
-                    const tel = col.find(c => c.match(/^[0-9+ ]{8,}$/)) ? col.find(c => c.match(/^[0-9+ ]{8,}$/)).replace(/"/g, '').trim() : '';
-                    mapa[cli] = { cuit, email, tel };
+                const col = lineas[i].split(/;|,/);
+
+                if (col.length > 0) {
+                    const camposLimpios = col.map(c => c.replace(/"/g, '').trim());
+                    let clienteKey = camposLimpios[0] ? camposLimpios[0].toUpperCase() : '';
+                    if (!clienteKey && camposLimpios[2]) clienteKey = camposLimpios[2].toUpperCase();
+                    if (!clienteKey && camposLimpios[3]) clienteKey = camposLimpios[3].toUpperCase();
+
+                    if (!clienteKey) continue;
+
+                    let emailEncontrado = '';
+                    for (let c = 0; c < camposLimpios.length; c++) {
+                        if (camposLimpios[c].includes('@') && camposLimpios[c].includes('.')) {
+                            emailEncontrado = camposLimpios[c].toLowerCase();
+                            break;
+                        }
+                    }
+
+                    let cuitVal = '—';
+                    for (let c = 0; c < camposLimpios.length; c++) {
+                        if (camposLimpios[c].match(/^\d{2}-?\d{8}-?\d{1}$/)) {
+                            cuitVal = camposLimpios[c];
+                            break;
+                        }
+                    }
+
+                    let telVal = '';
+                    for (let c = 0; c < camposLimpios.length; c++) {
+                        if (camposLimpios[c].match(/^[0-9+ ]{8,15}$/) && camposLimpios[c] !== cuitVal) {
+                            telVal = camposLimpios[c];
+                            break;
+                        }
+                    }
+
+                    mapa[clienteKey] = { cuit: cuitVal, email: emailEncontrado, tel: telVal };
                 }
             }
             return mapa;
         }
 
-        function parsearCSVDeudas(texto, baseClientes) {
-            const lineas = texto.split('\n');
+        function parsearCSVDeudas(texto, baseClientesMap) {
+            const lineas = texto.split(/\r?\n/);
             const res = {};
+
             for (let i = 1; i < lineas.length; i++) {
                 if (!lineas[i].trim()) continue;
-                const col = lineas[i].includes(';') ? lineas[i].split(';') : lineas[i].split(',');
-                if (col.length >= 4) {
-                    const cli = col[0].replace(/"/g, '').trim().toUpperCase();
-                    const comp = col[1] ? col[1].replace(/"/g, '').trim() : '';
-                    const monto = parseFloat(col[col.length - 1].replace(/"/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                const col = lineas[i].split(/;|,/);
 
-                    if (!res[cli]) {
-                        const info = baseClientes[cli] || { cuit: '—', email: '', tel: '' };
-                        res[cli] = { cliente: cli, cuit: info.cuit, email: info.email, tel: info.tel, facturas: [], deudaTotal: 0 };
+                if (col.length >= 2) {
+                    const cliente = col[0].replace(/"/g, '').trim().toUpperCase();
+                    if (!cliente) continue;
+
+                    const comprobante = col[1] ? col[1].replace(/"/g, '').trim() : 'F-001';
+                    let montoRaw = col[col.length - 1].replace(/"/g, '').replace(/\$/g, '').trim();
+                    let monto = 0;
+
+                    if (montoRaw) {
+                        montoRaw = montoRaw.replace(/\./g, '').replace(',', '.');
+                        monto = parseFloat(montoRaw) || 0;
+                        if (monto > 1000000) monto = monto / 1000;
                     }
-                    res[cli].facturas.push(comp);
-                    res[cli].deudaTotal += monto;
+
+                    if (!res[cliente]) {
+                        let infoBase = baseClientesMap[cliente];
+                        if (!infoBase) {
+                            const matchKey = Object.keys(baseClientesMap).find(k => k.includes(cliente) || cliente.includes(k));
+                            if (matchKey) infoBase = baseClientesMap[matchKey];
+                        }
+                        if (!infoBase) infoBase = { cuit: '—', email: '', tel: '' };
+
+                        res[cliente] = {
+                            cliente, cuit: infoBase.cuit, email: infoBase.email, tel: infoBase.tel,
+                            facturas: [], deudaTotal: 0
+                        };
+                    }
+                    res[cliente].facturas.push(comprobante);
+                    res[cliente].deudaTotal += monto;
                 }
             }
             return res;
@@ -319,16 +404,16 @@
             const lista = Object.values(globalClientesCruceMap);
 
             lista.forEach((item, idx) => {
-                const tieneEmail = item.email.length > 0;
+                const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50';
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" data-idx="${idx}" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
                     <td class="p-2.5 font-bold">${item.cliente}</td>
                     <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR')}</td>
+                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                     <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
-                    <td class="p-2.5"><button onclick="abrirDetalleDeuda('${item.cliente}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
+                    <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -352,26 +437,55 @@
                 tr.innerHTML = `
                     <td class="p-2.5 font-bold">${item.cliente}</td>
                     <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR')}</td>
+                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                     <td class="p-2.5">${item.tel || '—'}</td>
                     <td class="p-2.5"><button onclick="enviarWhatsAppOmitido('${item.cliente}', '${item.tel}', ${item.deudaTotal})" class="bg-emerald-600 text-white px-2 py-1 rounded font-bold text-[10px]">📲 WhatsApp</button></td>
-                    <td class="p-2.5"><button onclick="registrarGestionManual('${item.cliente}')" class="bg-slate-800 text-white px-2 py-1 rounded text-[10px]">📝 Gestionar</button></td>
+                    <td class="p-2.5"><button onclick="abrirModalWPP('${item.cliente}')" class="bg-slate-800 text-white px-2 py-1 rounded text-[10px]">📝 Gestionar</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // Disparar envíos por Backend
+        function enviarWhatsAppOmitido(cliente, tel, monto) {
+            const num = tel ? tel.replace(/[^0-9]/g, '') : '';
+            if (!num) { alert(`❌ El cliente ${cliente} no posee teléfono registrado.`); return; }
+            const msj = `*CAMPO Y ASOCIADOS*\nEstimado *${cliente}*:\nLe informamos que registra un saldo pendiente de *$${monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}*.\nAlias Transferencia: *HOJOBAR.PROV.BSAS*`;
+            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msj)}`, '_blank');
+        }
+
+        function abrirModalWPP(cliente) {
+            clienteSeleccionadoWPP = cliente;
+            document.getElementById('wpp-modal-titulo').innerText = `Registrar Gestión WPP — ${cliente}`;
+            document.getElementById('modal-gestion-wpp').classList.remove('hidden');
+        }
+        function cerrarModalWPP() { document.getElementById('modal-gestion-wpp').classList.add('hidden'); }
+
+        async function guardarGestionWPPModal() {
+            const estado = document.getElementById('wpp-estado').value;
+            const fechaProm = document.getElementById('wpp-fecha-promesa').value;
+            const notas = document.getElementById('wpp-notas').value;
+            const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
+
+            await fetch(`${API_URL}/api/gestiones`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sucursal: suc, cliente_nombre: clienteSeleccionadoWPP, canal: 'WhatsApp',
+                    estado_gestion: estado, fecha_promesa_pago: fechaProm, notas_observaciones: notas
+                })
+            });
+
+            cerrarModalWPP();
+            alert('✅ Gestión de WhatsApp guardada correctamente en PostgreSQL.');
+            cargarHistorial();
+        }
+
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
             const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
 
-            if (!mail || !pass) {
-                alert('⚠️ Configura primero las credenciales SMTP en ⚙️ Configuración.');
-                abrirConfiguracion();
-                return;
-            }
+            if (!mail || !pass) { alert('⚠️ Configura primero las credenciales SMTP.'); abrirConfiguracion(); return; }
 
             const seleccionados = [];
             const checkboxes = document.querySelectorAll('.chk-cliente:checked');
@@ -382,10 +496,7 @@
                 seleccionados.push(listaAll[idx]);
             });
 
-            if (seleccionados.length === 0) {
-                alert('Por favor tilda al menos un cliente para enviar.');
-                return;
-            }
+            if (seleccionados.length === 0) { alert('Por favor selecciona al menos un cliente.'); return; }
 
             const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
                 method: 'POST',
@@ -399,14 +510,13 @@
 
             const data = await res.json();
             if (data.exito) {
-                alert(`✅ Notificaciones enviadas correctamente: ${data.enviados} correos despachados.`);
+                alert(`✅ Notificaciones enviadas con éxito: ${data.enviados} correos despachados.`);
                 cargarHistorial();
             } else {
-                alert('❌ Error al enviar correos: ' + data.error);
+                alert('❌ Error enviando correos: ' + data.error);
             }
         }
 
-        // Cargar Historial
         async function cargarHistorial() {
             const tbody = document.getElementById('tabla-historial');
             const res = await fetch(`${API_URL}/api/historial`);
@@ -416,7 +526,7 @@
             tbody.innerHTML = datos.map(item => `
                 <tr class="border-b">
                     <td class="p-3">${new Date(item.fecha_registro).toLocaleString('es-AR')}</td>
-                    <td class="p-3 font-semibold">Sucursal ${item.sucursal_id}</td>
+                    <td class="p-3 font-semibold">${item.sucursal || 'CASA CENTRAL'}</td>
                     <td class="p-3">${item.cliente_nombre || 'Cliente ID ' + item.cliente_id}</td>
                     <td class="p-3">${item.canal || 'Email'}</td>
                     <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion}</td>
@@ -426,6 +536,7 @@
             `).join('');
 
             actualizarContadorAlertas();
+            actualizarMetricas();
         }
 
         function actualizarContadorAlertas() {
@@ -437,8 +548,18 @@
         function mostrarPopUpNotificaciones() {
             const hoy = new Date().toISOString().split('T')[0];
             const vencidas = globalHistorialData.filter(d => d.fecha_promesa_pago && d.fecha_promesa_pago <= hoy && d.estado_gestion !== 'Cobrado');
-            if (vencidas.length === 0) alert('✅ No hay alertas pendientes de promesas vencidas.');
-            else alert(`🚨 ATENCIÓN: Hay ${vencidas.length} promesas de pago vencidas pendientes de cobro.`);
+            if (vencidas.length === 0) alert('✅ No hay promesas de pago vencidas pendientes.');
+            else alert(`🚨 ATENCIÓN: Tienes ${vencidas.length} promesas de pago vencidas o por vencer hoy.`);
+        }
+
+        function actualizarMetricas() {
+            const mails = globalHistorialData.filter(d => d.canal === 'Email').length;
+            const wpp = globalHistorialData.filter(d => d.canal === 'WhatsApp').length;
+            const promesas = globalHistorialData.filter(d => d.fecha_promesa_pago).length;
+
+            document.getElementById('kpi-mails').innerText = mails;
+            document.getElementById('kpi-wpp').innerText = wpp;
+            document.getElementById('kpi-promesas').innerText = promesas;
         }
 
         cargarHistorial();
