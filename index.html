@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Cobranzas - Campo y Asociados</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans">
+
+    <!-- Encabezado Principal -->
+    <header class="bg-slate-900 text-white p-4 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide">Campo y Asociados | Sistema Multisucursal de Cobranzas</h1>
+            <span class="bg-green-600 text-xs px-2 py-1 rounded-full font-semibold">Servidor en Nube Activo</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto m-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Formulario de Registro de Gestión -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-1">
+            <h2 class="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Registrar Gestión</h2>
+            
+            <form id="form-gestion" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Sucursal ID</label>
+                    <input type="number" id="sucursal_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Cliente ID</label>
+                    <input type="number" id="cliente_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Canal de Contacto</label>
+                    <select id="canal" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Email">Correo Electrónico</option>
+                        <option value="Llamada">Llamada Telefónica</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Estado de la Gestión</label>
+                    <select id="estado_gestion" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                        <option value="Promesa de Pago">Promesa de Pago</option>
+                        <option value="En Negociacion">En Negociación</option>
+                        <option value="Cobrado">Cobrado / Liquidado</option>
+                        <option value="Reclamo">Reclamo / Disconformidad</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Fecha Promesa de Pago</label>
+                    <input type="date" id="fecha_promesa_pago" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Observaciones / Comentarios</label>
+                    <textarea id="notas_observaciones" rows="3" placeholder="Detalles de la conversación..." class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors text-sm">
+                    Guardar Gestión en Nube
+                </button>
+            </form>
+            
+            <div id="mensaje-estado" class="mt-3 text-xs text-center hidden"></div>
+        </section>
+
+        <!-- Panel de Historial y Auditoría Casa Central -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-2">
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-lg font-semibold text-slate-900">Historial de Eventos y Auditoría</h2>
+                <button onclick="cargarHistorial()" class="text-xs bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded transition-colors">
+                    🔄 Actualizar
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-50 uppercase text-slate-500 border-b">
+                        <tr>
+                            <th class="p-2">Fecha</th>
+                            <th class="p-2">Sucursal</th>
+                            <th class="p-2">Cliente</th>
+                            <th class="p-2">Canal</th>
+                            <th class="p-2">Estado</th>
+                            <th class="p-2">Promesa</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-historial">
+                        <tr>
+                            <td colspan="6" class="p-4 text-center text-slate-400">Cargando registros del servidor en la nube...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Conexión y Lógica Backend en Render -->
+    <script>
+        const API_URL = 'https://cobranzas-campo-backend.onrender.com';
+
+        // 1. Guardar una nueva gestión
+        document.getElementById('form-gestion').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const mensajeDiv = document.getElementById('mensaje-estado');
+            mensajeDiv.className = 'mt-3 text-xs text-center text-blue-600 block';
+            mensajeDiv.innerText = 'Conectando con el servidor en Render...';
+
+            const gestionData = {
+                sucursal_id: parseInt(document.getElementById('sucursal_id').value) || 1,
+                cliente_id: parseInt(document.getElementById('cliente_id').value) || 1,
+                canal: document.getElementById('canal').value,
+                estado_gestion: document.getElementById('estado_gestion').value,
+                fecha_promesa_pago: document.getElementById('fecha_promesa_pago').value || null,
+                notas_observaciones: document.getElementById('notas_observaciones').value
+            };
+
+            try {
+                const respuesta = await fetch(`${API_URL}/api/gestiones`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(gestionData)
+                });
+
+                const resultado = await respuesta.json();
+
+                if (respuesta.ok && resultado.exito) {
+                    mensajeDiv.className = 'mt-3 text-xs text-center text-green-600 font-semibold block';
+                    mensajeDiv.innerText = '¡Gestión registrada con éxito!';
+                    document.getElementById('notas_observaciones').value = '';
+                    cargarHistorial();
+                } else {
+                    throw new Error(resultado.error || 'Error en respuesta de servidor');
+                }
+            } catch (error) {
+                mensajeDiv.className = 'mt-3 text-xs text-center text-red-600 font-semibold block';
+                mensajeDiv.innerText = 'Reintentando conexión con la base de datos...';
+                console.error('Error:', error);
+            }
+        });
+
+        // 2. Cargar el historial desde PostgreSQL en Render
+        async function cargarHistorial() {
+            const tabla = document.getElementById('tabla-historial');
+            
+            try {
+                const respuesta = await fetch(`${API_URL}/api/historial`);
+                const datos = await respuesta.json();
+
+                if (!Array.isArray(datos) || datos.length === 0) {
+                    tabla.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay gestiones registradas aún. ¡Agrega la primera!</td></tr>`;
+                    return;
+                }
+
+                tabla.innerHTML = datos.map(item => `
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="p-2">${item.fecha_registro ? new Date(item.fecha_registro).toLocaleString('es-AR') : '-'}</td>
+                        <td class="p-2 font-medium">Sucursal ${item.sucursal_id || 1}</td>
+                        <td class="p-2">Cliente ID ${item.cliente_id || 1}</td>
+                        <td class="p-2"><span class="bg-slate-100 px-2 py-0.5 rounded text-slate-700">${item.canal || 'N/A'}</span></td>
+                        <td class="p-2 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion || 'Registrado'}</td>
+                        <td class="p-2">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                tabla.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-amber-600">Servidor en modo de espera. Presiona "🔄 Actualizar" en unos segundos.</td></tr>`;
+                console.error('Error:', error);
+            }
+        }
+
+        // Cargar registros automáticamente al iniciar
+        cargarHistorial();
+    </script>
+</body>
+</html>
