@@ -246,7 +246,6 @@
 
     <!-- Lógica JavaScript -->
     <script>
-        // URL OFICIAL DEL SERVIDOR BACKEND NODE.JS EN RENDER
         const API_URL = 'https://cobranzas-campo-backend.onrender.com';
         
         let globalClientesCruceMap = {};
@@ -402,13 +401,18 @@
             lista.forEach((item, idx) => {
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50';
+                tr.className = 'border-b hover:bg-slate-50 fila-cliente';
+                tr.setAttribute('data-cliente', item.cliente);
+                tr.setAttribute('data-cuit', item.cuit);
+                tr.setAttribute('data-deuda', item.deudaTotal);
+                tr.setAttribute('data-email', item.email || '');
+
                 tr.innerHTML = `
-                    <td class="p-2.5"><input type="checkbox" class="chk-cliente" data-idx="${idx}" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold">${item.cliente}</td>
-                    <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
+                    <td class="p-2.5 font-bold col-nombre">${item.cliente}</td>
+                    <td class="p-2.5 col-cuit">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700 col-deuda">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2.5 col-email">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
                     <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -482,6 +486,7 @@
             cargarHistorial();
         }
 
+        // LECTURA DIRECTA DE FILAS DE LA TABLA (MÁXIMA SEGURIDAD)
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -494,13 +499,25 @@
             }
 
             const seleccionados = [];
-            const checkboxes = document.querySelectorAll('#tabla-cruce-cuerpo input[type="checkbox"]:checked');
-            const listaAll = Object.values(globalClientesCruceMap);
+            const filasTildadas = document.querySelectorAll('#tabla-cruce-cuerpo tr');
 
-            checkboxes.forEach(chk => {
-                const idx = chk.getAttribute('data-idx');
-                if (idx !== null && listaAll[idx]) {
-                    seleccionados.push(listaAll[idx]);
+            filasTildadas.forEach(row => {
+                const chk = row.querySelector('.chk-cliente');
+                if (chk && chk.checked) {
+                    const clienteNombre = row.getAttribute('data-cliente');
+                    const itemOriginal = globalClientesCruceMap[clienteNombre];
+
+                    if (itemOriginal) {
+                        seleccionados.push(itemOriginal);
+                    } else {
+                        seleccionados.push({
+                            cliente: clienteNombre,
+                            cuit: row.getAttribute('data-cuit'),
+                            email: row.getAttribute('data-email'),
+                            deudaTotal: parseFloat(row.getAttribute('data-deuda')) || 0,
+                            facturas: ['Resumen de Saldo']
+                        });
+                    }
                 }
             });
 
@@ -543,6 +560,7 @@
             const tbody = document.getElementById('tabla-historial');
             try {
                 const res = await fetch(`${API_URL}/api/historial`);
+                if (!res.ok) return;
                 const datos = await res.json();
                 globalHistorialData = datos;
 
