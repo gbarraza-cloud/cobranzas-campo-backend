@@ -244,8 +244,9 @@
         </div>
     </div>
 
-    <!-- Lógica JavaScript -->
+    <!-- Lógica JavaScript de Envíos Seguros -->
     <script>
+        // URL OFICIAL Y ABSOLUTA DEL BACKEND NODE.JS
         const API_URL = 'https://cobranzas-campo-backend.onrender.com';
         
         let globalClientesCruceMap = {};
@@ -401,7 +402,7 @@
             lista.forEach((item, idx) => {
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50 fila-cliente';
+                tr.className = 'border-b hover:bg-slate-50';
                 tr.setAttribute('data-cliente', item.cliente);
                 tr.setAttribute('data-cuit', item.cuit);
                 tr.setAttribute('data-deuda', item.deudaTotal);
@@ -409,10 +410,10 @@
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold col-nombre">${item.cliente}</td>
-                    <td class="p-2.5 col-cuit">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700 col-deuda">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5 col-email">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5 font-bold">${item.cliente}</td>
+                    <td class="p-2.5">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
                     <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -486,7 +487,7 @@
             cargarHistorial();
         }
 
-        // LECTURA DIRECTA DE FILAS DE LA TABLA (MÁXIMA SEGURIDAD)
+        // ENVÍO SEGURIZADO QUE DETECTA Y MANEJA ERRORES HTML DE RENDER
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -528,7 +529,7 @@
 
             const btnEnvio = document.getElementById('btn-enviar-smtp');
             btnEnvio.disabled = true;
-            btnEnvio.innerText = '⏳ Enviando notificaciones...';
+            btnEnvio.innerText = '⏳ Conectando con servidor en la nube...';
 
             try {
                 const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
@@ -541,7 +542,15 @@
                     })
                 });
 
-                const data = await res.json();
+                // Si el servidor devuelve HTML (Error de servidor dormido/apagado en Render)
+                const textResponse = await res.text();
+                
+                if (textResponse.trim().startsWith('<')) {
+                    throw new Error("El Servidor Backend en Render está reactivándose o en mantenimiento. Aguarda 20 segundos e inténtalo de nuevo.");
+                }
+
+                const data = JSON.parse(textResponse);
+                
                 if (data.exito) {
                     alert(`✅ ¡Proceso finalizado! Se enviaron ${data.enviados} correos con éxito.`);
                     cargarHistorial();
@@ -549,7 +558,7 @@
                     alert('❌ Error reportado por el servidor: ' + data.error);
                 }
             } catch (err) {
-                alert('❌ Error de conexión al servidor: ' + err.message);
+                alert('⚠️ Estado de conexión: ' + err.message);
             } finally {
                 btnEnvio.disabled = false;
                 btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
