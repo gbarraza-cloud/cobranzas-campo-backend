@@ -3,16 +3,19 @@ const { Pool } = require('pg');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// Conexión a PostgreSQL en Render
+// Configuración de Middlewares (Cruciales para procesar JSON y permitir solicitudes del Frontend)
+app.use(cors({ origin: '*' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Conexión a la base de datos PostgreSQL en Render
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// 1. Inicialización de Tablas
+// Inicialización de la estructura de tablas
 async function initDB() {
   try {
     await pool.query(`
@@ -27,7 +30,7 @@ async function initDB() {
 
       CREATE TABLE IF NOT EXISTS clientes (
         id SERIAL PRIMARY KEY,
-        sucursal_id INT REFERENCES sucursales_y_usuarios(id) ON DELETE CASCADE,
+        sucursal_id INT,
         nombre_cliente VARCHAR(200) NOT NULL,
         cuit VARCHAR(20),
         email VARCHAR(150),
@@ -37,7 +40,7 @@ async function initDB() {
 
       CREATE TABLE IF NOT EXISTS facturas_y_deudas (
         id SERIAL PRIMARY KEY,
-        cliente_id INT REFERENCES clientes(id) ON DELETE CASCADE,
+        cliente_id INT,
         empresa VARCHAR(100),
         comprobante VARCHAR(100) NOT NULL,
         fecha_emision DATE,
@@ -48,8 +51,8 @@ async function initDB() {
 
       CREATE TABLE IF NOT EXISTS historial_gestiones_y_eventos (
         id SERIAL PRIMARY KEY,
-        sucursal_id INT REFERENCES sucursales_y_usuarios(id),
-        cliente_id INT REFERENCES clientes(id) ON DELETE CASCADE,
+        sucursal_id INT,
+        cliente_id INT,
         canal VARCHAR(20) NOT NULL,
         estado_gestion VARCHAR(50) NOT NULL,
         fecha_promesa_pago DATE,
@@ -58,35 +61,37 @@ async function initDB() {
         fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Tablas verificadas y listas.');
+    console.log('✅ Tablas verificadas y listas en PostgreSQL.');
   } catch (err) {
     console.error('❌ Error al inicializar tablas:', err);
   }
 }
 
-// 2. Ruta de prueba del servidor
+// Ruta principal de salud del servidor
 app.get('/', (req, res) => {
-  res.json({ mensaje: 'API de Cobranzas Campo y Asociados Operativa 🚀', estado: 'Conectado a PostgreSQL' });
+  res.json({ status: 'OK', mensaje: 'API de Cobranzas Campo y Asociados Operativa 🚀' });
 });
 
-// 3. Ruta para recibir y guardar las gestiones de cobranza
+// Ruta para recibir y guardar las gestiones
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal_id, cliente_id, canal, estado_gestion, fecha_promesa_pago, notas_observaciones } = req.body;
   try {
+    const promesaPagoValida = fecha_promesa_pago ? fecha_promesa_pago : null;
+    
     const resultado = await pool.query(
       `INSERT INTO historial_gestiones_y_eventos 
        (sucursal_id, cliente_id, canal, estado_gestion, fecha_promesa_pago, notas_observaciones) 
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [sucursal_id, cliente_id, canal, estado_gestion, fecha_promesa_pago, notas_observaciones]
+      [sucursal_id || 1, cliente_id || 1, canal, estado_gestion, promesaPagoValida, notas_observaciones]
     );
     res.status(201).json({ exito: true, gestion: resultado.rows[0] });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ exito: false, error: 'Error al guardar la gestión' });
+    console.error('Error al insertar gestión:', err);
+    res.status(500).json({ exito: false, error: err.message });
   }
 });
 
-// 4. Ruta para obtener el historial (Panel Auditoría Casa Central)
+// Ruta para obtener el historial
 app.get('/api/historial', async (req, res) => {
   try {
     const resultado = await pool.query(`
@@ -98,6 +103,7 @@ app.get('/api/historial', async (req, res) => {
     `);
     res.json(resultado.rows);
   } catch (err) {
+    console.error('Error al consultar historial:', err);
     res.status(500).json({ error: 'Error al consultar historial' });
   }
 });
