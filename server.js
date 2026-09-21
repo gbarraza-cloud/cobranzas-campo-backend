@@ -125,7 +125,7 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// 1. Probar SMTP
+// Endpoint: Test SMTP
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
@@ -140,7 +140,7 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// 2. Envío Masivo
+// Endpoint: Enviar Correos Masivos
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
@@ -188,7 +188,7 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
   res.json({ exito: true, enviados, errores });
 });
 
-// 3. Historial y Gestiones
+// Endpoint: Historial
 app.get('/api/historial', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
@@ -198,6 +198,7 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
+// Endpoint: Gestiones Individuales / WPP
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
