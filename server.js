@@ -8,18 +8,29 @@ const { simpleParser } = require('mailparser');
 const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+const SUCURSALES_OFICIALES = [
+  "CASA CENTRAL", "30 DE AGOSTO", "25 DE MAYO", "AMERICA", "ARROYITO", "AYACUCHO", "AZUL",
+  "BALCARCE", "BENITO JUAREZ", "CACHARI", "CARHUE", "CARLOS CASARES",
+  "CARLOS TEJEDOR", "CHIVILCOY", "CORONEL SUAREZ", "DAIREAUX", "GRAL.ALVEAR",
+  "GRAL.PICO", "GRAL.PINTO", "GRAL.VILLEGAS", "INT. ALVEAR", "LA MADRID",
+  "LAPRIDA", "LAS FLORES", "LINCOLN", "MADARIAGA", "MONES CAZON", "MORTEROS",
+  "OLAVARRIA", "PEHUAJO", "RAUCH", "RIO IV", "SANTA FE", "T.LAUQUEN",
+  "TANDIL", "TAPALQUE", "TRES ARROYOS", "VENADO TUERTO", "VILLA MARIA", "VILLA MERCEDES"
+];
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Inicializar tablas PostgreSQL
 async function initDB() {
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS historial_gestiones_y_eventos (
         id SERIAL PRIMARY KEY,
+        sucursal VARCHAR(100) DEFAULT 'CASA CENTRAL',
         sucursal_id INT DEFAULT 1,
         cliente_id INT DEFAULT 1,
         cliente_nombre VARCHAR(255),
@@ -28,7 +39,7 @@ async function initDB() {
         estado_gestion VARCHAR(100),
         fecha_promesa_pago DATE,
         notas_observaciones TEXT,
-        monto_deuda NUMERIC(12, 2) DEFAULT 0,
+        monto_deuda NUMERIC(14, 2) DEFAULT 0.0,
         fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -39,105 +50,127 @@ async function initDB() {
         estado_envio VARCHAR(50),
         fecha_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS gestion_whatsapp (
+        cliente_key VARCHAR(255) PRIMARY KEY,
+        estado VARCHAR(100),
+        fecha_promesa VARCHAR(50),
+        notas TEXT,
+        ruta_comprobante TEXT,
+        fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
-    console.log('✅ Tablas PostgreSQL verificadas en la nube.');
+    console.log('✅ Esquema PostgreSQL inicializado y verificado correctamente.');
   } catch (err) {
-    console.error('❌ Error inicializando DB:', err.message);
+    console.error('❌ Error iniciando tablas en DB:', err.message);
   }
 }
 
-// 1. Endpoint: Obtener Historial
-app.get('/api/historial', async (req, res) => {
+// Generador exacto del HTML del Email
+function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
+  let totalDeuda = 0.0;
+  const filasFacturas = facturas.map(f => {
+    totalDeuda += parseFloat(f.monto) || 0.0;
+    return `
+      <tr style='border-bottom: 1px solid #e2e8f0;'>
+        <td style='padding: 10px;'>${f.cliente || cliente}</td>
+        <td style='padding: 10px;'>${f.empresa || '—'}</td>
+        <td style='padding: 10px;'>${f.comprobante || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.fechaComp || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.fechaVenc || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.moneda || 'ARS'}</td>
+        <td style='padding: 10px; text-align: right; font-weight: bold;'>$${(parseFloat(f.monto)||0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+      </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'></head>
+  <body style='margin: 0; padding: 0; background-color: #f4f6f8; font-family: Arial, sans-serif; color: #141414;'>
+  <div style='background-color: #f4f6f8; width: 100%; padding: 30px 0;'>
+  <table role='presentation' width='800' align='center' style='max-width: 800px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;'>
+  <tr><td style='background-color: #ffffff; padding: 25px 35px 20px 35px; border-bottom: 4px solid #b80032;'>
+  <h2 style='color: #b80032; margin: 0; font-size: 22px;'>CAMPO & ASOCIADOS</h2>
+  </td></tr>
+  <tr><td style='padding: 25px 35px 10px 35px; text-align: center;'>
+  <h1 style='margin: 0; font-size: 19px; font-weight: 800; color: #141414; text-transform: uppercase;'>ESTADO DE CUENTA Y COMPOSICIÓN DE SALDOS</h1>
+  <p style='margin: 4px 0 0 0; font-size: 12px; color: #b80032; font-weight: bold;'>Notificación Automática Periódica — ${(sucursal || 'CASA CENTRAL').toUpperCase()}</p>
+  </td></tr>
+  <tr><td style='padding: 20px 35px 30px 35px;'>
+  <div style='background-color: #f8fafc; border-left: 4px solid #b80032; padding: 12px 16px; margin-bottom: 25px; font-size: 13px; color: #334155;'>
+  ℹ️ <strong>Aviso del sistema:</strong> Este es un correo automático enviado periódicamente por el sistema para mantenerlo informado sobre el estado actualizado de su cuenta.
+  </div>
+  <p style='margin-top: 0; font-size: 14px; color: #141414;'><strong>Estimado cliente ${cliente}:</strong></p>
+  ${cuit ? `<p style='margin-top: -8px; font-size: 13px; color: #475569;'><strong>CUIT:</strong> ${cuit}</p>` : ''}
+  <p style='font-size: 14px; line-height: 1.6; color: #334155;'>Por medio de la presente le recordamos los siguientes puntos a tener en cuenta para la correcta liquidación y cancelación de sus respectivas facturas pendientes:</p>
+  
+  <div style='font-size: 14px; font-weight: 700; color: #141414; margin: 25px 0 12px 0; padding-bottom: 6px; border-bottom: 2px solid #b80032; text-transform: uppercase;'>Composición de Saldos Pendientes</div>
+  <table style='width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;'>
+  <thead><tr style='background-color: #141414; color: #ffffff;'>
+  <th style='padding: 10px; text-align: left;'>Cliente</th>
+  <th style='padding: 10px; text-align: left;'>Empresa</th>
+  <th style='padding: 10px; text-align: left;'>Comprobante</th>
+  <th style='padding: 10px; text-align: center;'>Fecha Comp.</th>
+  <th style='padding: 10px; text-align: center;'>Fecha Vto.</th>
+  <th style='padding: 10px; text-align: center;'>Moneda</th>
+  <th style='padding: 10px; text-align: right;'>Importe Ppal</th>
+  </tr></thead>
+  <tbody>${filasFacturas}</tbody>
+  <tfoot><tr style='background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #b80032;'>
+  <td colspan='6' style='padding: 12px; text-align: right; color: #141414;'>TOTAL DEUDA PENDIENTE</td>
+  <td style='padding: 12px; text-align: right; color: #b80032; font-size: 14px;'>$${totalDeuda.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+  </tr></tfoot></table>
+
+  <div style='background-color: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-top: 25px;'>
+  <div style='margin-bottom: 14px; font-size: 13.5px;'><strong>1. Cheques Electrónicos (Echeqs):</strong> En caso de abonar con cheques electrónicos, por favor enviar previamente detalle de CUIT emisor, monto y fecha de cobro al correo <a href='mailto:${emailRemitente}' style='color:#b80032; font-weight: bold;'>${emailRemitente}</a>.</div>
+  <div style='margin-bottom: 10px; font-size: 13.5px;'><strong>2. Transferencias Bancarias:</strong> Se detallan las CBUs habilitadas para transferencia:</div>
+  <table style='width: 100%; border-collapse: collapse; font-size: 12.5px;'>
+  <thead><tr style='background-color: #141414; color: #ffffff;'><th>Banco</th><th>Sucursal</th><th>Cta Cte en $</th><th>CBU</th><th>Alias</th></tr></thead>
+  <tbody>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Provincia</td><td style='padding: 6px; text-align: center;'>4004</td><td style='padding: 6px; text-align: center;'>18797/8</td><td style='padding: 6px; text-align: center;'>0140004501400401879785</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.PROV.BSAS</td></tr>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Nación</td><td style='padding: 6px; text-align: center;'>San Cristóbal</td><td style='padding: 6px; text-align: center;'>65600157568</td><td style='padding: 6px; text-align: center;'>0110656120065600157682</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.NACION</td></tr>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Galicia</td><td style='padding: 6px; text-align: center;'>San Cristóbal</td><td style='padding: 6px; text-align: center;'>13509/8 002/7</td><td style='padding: 6px; text-align: center;'>0070002320000013509877</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.GALICIA</td></tr>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Macro</td><td style='padding: 6px; text-align: center;'>San Cristóbal</td><td style='padding: 6px; text-align: center;'>330209424970971</td><td style='padding: 6px; text-align: center;'>2850302630094249709711</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.MACRO</td></tr>
+  </tbody></table>
+  <div style='margin-top: 15px; font-size: 13.5px;'><strong>3. Informe de Pago:</strong> Todo pago realizado debe ser informado indefectiblemente a <a href='mailto:${emailRemitente}' style='color:#b80032; font-weight: bold;'>${emailRemitente}</a>.</div>
+  </div></td></tr>
+  <tr><td style='background-color: #f8fafc; padding: 18px; text-align: center; font-size: 11.5px; color: #94a3b8;'>
+  Mensaje generado y enviado periódicamente de forma automática por el sistema de gestión el ${new Date().toLocaleDateString('es-AR')}.
+  </td></tr></table></div></body></html>`;
+}
+
+// Probar conexión SMTP
+app.post('/api/test-smtp', async (req, res) => {
+  const { mail, pass } = req.body;
   try {
-    const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
-    res.json(resultado.rows);
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: 587, secure: false,
+      auth: { user: mail, pass: pass }
+    });
+    await transporter.verify();
+    res.json({ exito: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ exito: false, error: err.message });
   }
 });
 
-// 2. Endpoint: Guardar Gestión Individual o WPP
-app.post('/api/gestiones', async (req, res) => {
-  const { sucursal_id, cliente_id, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
-  try {
-    const promesa = fecha_promesa_pago || null;
-    const resultado = await pool.query(
-      `INSERT INTO historial_gestiones_y_eventos 
-       (sucursal_id, cliente_id, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [sucursal_id || 1, cliente_id || 1, cliente_nombre || 'Cliente General', cuit || '—', canal, estado_gestion, promesa, notas_observaciones, monto_deuda || 0]
-    );
-    res.status(201).json({ exito: true, gestion: resultado.rows[0] });
-  } catch (err) {
-    res.status(500).json({ exito: false, error: err.message });
-  }
-});
-
-// 3. Endpoint: Envío Masivo de Correos SMTP con Plantilla Oficial de Campo & Asociados
+// Enviar Correos Masivos
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
-
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
-    return res.status(400).json({ exito: false, error: 'Credenciales SMTP no proporcionadas.' });
+    return res.status(400).json({ exito: false, error: 'Credenciales incompletas' });
   }
 
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-      user: configSMTP.user,
-      pass: configSMTP.pass
-    }
+    host: 'smtp.gmail.com', port: 587, secure: false,
+    auth: { user: configSMTP.user, pass: configSMTP.pass }
   });
 
   let enviados = 0;
   let errores = [];
 
   for (const item of listaClientes) {
-    const htmlBody = `
-      <!DOCTYPE html>
-      <html lang='es'>
-      <head><meta charset='UTF-8'></head>
-      <body style='margin: 0; padding: 0; background-color: #f4f6f8; font-family: Arial, sans-serif; color: #141414;'>
-        <div style='background-color: #f4f6f8; width: 100%; padding: 30px 0;'>
-          <table role='presentation' width='800' align='center' style='max-width: 800px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;'>
-            <tr><td style='background-color: #ffffff; padding: 25px 35px 20px 35px; border-bottom: 4px solid #b80032;'>
-              <h2 style='color: #b80032; margin: 0;'>CAMPO & ASOCIADOS</h2>
-            </td></tr>
-            <tr><td style='padding: 25px 35px 10px 35px; text-align: center;'>
-              <h1 style='margin: 0; font-size: 19px; font-weight: 800; color: #141414;'>ESTADO DE CUENTA Y COMPOSICIÓN DE SALDOS</h1>
-              <p style='margin: 4px 0 0 0; font-size: 12px; color: #b80032; font-weight: bold;'>Notificación Automática — ${sucursal || 'CASA CENTRAL'}</p>
-            </td></tr>
-            <tr><td style='padding: 20px 35px 30px 35px;'>
-              <p><strong>Estimado cliente ${item.cliente}:</strong></p>
-              <p>CUIT: ${item.cuit || '—'}</p>
-              <p>Por medio de la presente le recordamos los saldos pendientes de su cuenta:</p>
-              <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px;'>
-                <thead><tr style='background-color: #141414; color: #ffffff;'>
-                  <th style='padding: 8px;'>Comprobantes Pendientes</th>
-                </tr></thead>
-                <tbody>
-                  ${item.facturas.map(f => `<tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 8px;'>Comprobante: ${f}</td></tr>`).join('')}
-                </tbody>
-              </table>
-              <h3 style='color: #b80032; margin-top: 20px;'>TOTAL DEUDA PENDIENTE: $${item.deudaTotal.toLocaleString('es-AR')}</h3>
-              
-              <div style='background-color: #fafafa; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin-top: 20px;'>
-                <strong>Transferencias Bancarias (CBUs Habilitadas):</strong>
-                <ul style='font-size: 12px; line-height: 1.8;'>
-                  <li>Banco Provincia Alias: <strong>HOJOBAR.PROV.BSAS</strong></li>
-                  <li>Banco Nación Alias: <strong>HOJOBAR.NACION</strong></li>
-                  <li>Banco Galicia Alias: <strong>HOJOBAR.GALICIA</strong></li>
-                  <li>Banco Macro Alias: <strong>HOJOBAR.MACRO</strong></li>
-                </ul>
-              </div>
-            </td></tr>
-          </table>
-        </div>
-      </body>
-      </html>
-    `;
+    if (!item.email || !item.email.includes('@')) continue;
+
+    const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
 
     try {
       await transporter.sendMail({
@@ -152,6 +185,13 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
         'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
         [item.cliente, item.email, 'ENVIADO']
       );
+
+      await pool.query(
+        `INSERT INTO historial_gestiones_y_eventos 
+         (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
+      );
     } catch (err) {
       errores.push({ cliente: item.cliente, error: err.message });
     }
@@ -160,8 +200,54 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
   res.json({ exito: true, enviados, errores });
 });
 
+// Endpoints Historial y Gestiones WPP
+app.get('/api/historial', async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
+    res.json(resultado.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/gestiones', async (req, res) => {
+  const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
+  try {
+    const promesa = fecha_promesa_pago || null;
+    const resultado = await pool.query(
+      `INSERT INTO historial_gestiones_y_eventos 
+       (sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [sucursal || 'CASA CENTRAL', cliente_nombre, cuit || '—', canal, estado_gestion, promesa, notas_observaciones, monto_deuda || 0]
+    );
+
+    // Si la gestión viene de WPP guardar también en su tabla
+    if (canal === 'WhatsApp') {
+      await pool.query(
+        `INSERT INTO gestion_whatsapp (cliente_key, estado, fecha_promesa, notas) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (cliente_key) DO UPDATE SET estado = $2, fecha_promesa = $3, notas = $4`,
+        [cliente_nombre.toUpperCase(), estado_gestion, promesa || '—', notas_observaciones]
+      );
+    }
+
+    res.status(201).json({ exito: true, gestion: resultado.rows[0] });
+  } catch (err) {
+    res.status(500).json({ exito: false, error: err.message });
+  }
+});
+
+app.get('/api/gestion-wpp', async (req, res) => {
+  try {
+    const resu = await pool.query('SELECT * FROM gestion_whatsapp');
+    res.json(resu.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`Servidor activo en puerto ${PORT}`);
+  console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
   initDB();
 });
