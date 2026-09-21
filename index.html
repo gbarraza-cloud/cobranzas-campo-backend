@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Cobranzas — Campo y Asociados</title>
+    <title>Módulo de Cobranzas Automáticas — Campo y Asociados</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .active-tab {
@@ -15,236 +15,178 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header Principal -->
+    <!-- Header Principal Corporativo -->
     <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h1 class="text-xl font-bold tracking-wide">CAMPO Y ASOCIADOS | Módulo Masivo de Cobranzas</h1>
-                <p class="text-xs text-rose-400 font-semibold">Procesamiento y Notificación de Saldos por CSV</p>
+                <h1 class="text-xl font-bold tracking-wide">CAMPO & ASOCIADOS | Módulo de Cobranzas</h1>
+                <p id="subtitulo-header" class="text-xs text-rose-400 font-semibold">SUCURSAL: CASA CENTRAL | Gestión de Saldos y Envíos Automáticos</p>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="mostrarAlertasUrgentes()" id="btn-notificaciones" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2">
-                    🔔 Alertas <span id="badge-alertas" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+                <button onclick="mostrarPopUpNotificaciones()" class="relative bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2">
+                    🔔 Alertas <span id="badge-notificaciones" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
                 </button>
-                <span class="bg-green-600/20 text-green-400 border border-green-500/30 text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Nube Activa
-                </span>
+                <button onclick="abrirConfiguracion()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 font-semibold flex items-center gap-1">
+                    ⚙️ Configuración
+                </button>
             </div>
         </div>
     </header>
 
+    <!-- Contenido Principal con Pestañas -->
     <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
 
-        <!-- NAVEGACIÓN POR PESTAÑAS -->
         <nav class="flex border-b border-slate-200 bg-white rounded-t-lg shadow-sm overflow-x-auto mb-6">
-            <button onclick="cambiarPestana('pestana-masivo')" id="tab-masivo" class="active-tab px-5 py-3 text-sm flex items-center gap-2 whitespace-nowrap">
-                🚀 Carga Masiva CSV
+            <button onclick="cambiarPestana('tab-masivo')" id="nav-masivo" class="active-tab px-5 py-3 text-sm flex items-center gap-2 whitespace-nowrap">
+                🚀 Carga Masiva y Cruce CSV
             </button>
-            <button onclick="cambiarPestana('pestana-registro')" id="tab-registro" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                📝 Registro Individual / WPP
+            <button onclick="cambiarPestana('tab-omitidos')" id="nav-omitidos" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                ⚠️ Clientes sin Mail
             </button>
-            <button onclick="cambiarPestana('pestana-historial')" id="tab-historial" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                📋 Historial y Auditoría
+            <button onclick="cambiarPestana('tab-historial')" id="nav-historial" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                📋 Historial PostgreSQL
             </button>
-            <button onclick="cambiarPestana('pestana-metricas')" id="tab-metricas" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                📊 Métricas / KPIs
+            <button onclick="cambiarPestana('tab-calendario')" id="nav-calendario" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                📅 Calendario General
+            </button>
+            <button onclick="cambiarPestana('tab-metricas')" id="nav-metricas" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                📊 Panel de Métricas / KPIs
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA PRINCIPAL: MÓDULO MASIVO CSV Y CRUCE -->
-        <div id="pestana-masivo" class="space-y-6">
-            
+        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE DE CSVs -->
+        <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4 flex items-center gap-2">
-                    📂 Carga de Archivos .CSV para Cruce Masivo
-                </h2>
-
+                <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Archivo 1: Deudas -->
-                    <div class="p-4 bg-slate-50 border rounded-lg border-slate-200">
-                        <label class="block text-xs font-bold text-slate-800 mb-1">
-                            1. Reporte General de Deudas (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded font-bold">OBLIGATORIO</span>
-                        </label>
-                        <p class="text-[11px] text-slate-500 mb-3">Archivo con facturas, comprobantes, fechas de vencimiento y montos.</p>
-                        <input type="file" id="csv-deudas" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                    <div class="p-4 bg-slate-50 border rounded-lg">
+                        <label class="block text-xs font-bold text-slate-800 mb-1">1. Reporte de Deudas General (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded">OBLIGATORIO</span></label>
+                        <input type="file" id="csv-deudas" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white cursor-pointer">
                     </div>
-
-                    <!-- Archivo 2: Clientes -->
-                    <div class="p-4 bg-slate-50 border rounded-lg border-slate-200">
-                        <label class="block text-xs font-bold text-slate-800 mb-1">
-                            2. Base General de Clientes (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded font-bold">OBLIGATORIO</span>
-                        </label>
-                        <p class="text-[11px] text-slate-500 mb-3">Archivo con relacionamiento de Cliente/CUIT, Correos Electrónicos y Teléfonos.</p>
-                        <input type="file" id="csv-clientes" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                    <div class="p-4 bg-slate-50 border rounded-lg">
+                        <label class="block text-xs font-bold text-slate-800 mb-1">2. Base Clientes (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded">OBLIGATORIO</span></label>
+                        <input type="file" id="csv-clientes" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white cursor-pointer">
                     </div>
                 </div>
 
-                <!-- Botones de Acción -->
                 <div class="mt-6 flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                    <button onclick="procesarArchivosCSV(true)" class="flex-1 bg-rose-800 hover:bg-rose-900 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors text-xs flex items-center justify-center gap-2">
-                        ⚡ CRUZAR Y PROCESAR DEUDAS
+                    <button onclick="procesarArchivosCSV(true)" class="flex-1 bg-rose-800 hover:bg-rose-900 text-white font-bold py-3 px-4 rounded-lg shadow text-xs">
+                        🚀 ENVIAR A TODOS (ENVIAR MASIVO)
                     </button>
-                    <button onclick="procesarArchivosCSV(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors text-xs flex items-center justify-center gap-2">
-                        📋 SELECCIONAR OMITIDOS / MANUAL
+                    <button onclick="procesarArchivosCSV(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg shadow text-xs">
+                        📋 SELECCIONAR CLIENTES MANUALMENTE
                     </button>
                 </div>
             </section>
 
-            <!-- Resumen del Cruce de Datos -->
-            <section id="seccion-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <!-- Tabla de Pre-Vista y Cruce -->
+            <section id="seccion-tabla-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
-                    <h3 class="text-sm font-bold text-slate-900">Resultados del Cruce de Información</h3>
-                    <span id="resumen-cruce-badge" class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold">0 clientes vinculados</span>
+                    <h3 class="text-sm font-bold text-slate-900">Vista Previa del Cruce de Deudas y Contactos</h3>
+                    <input type="text" id="filtro-cruce" onkeyup="filtrarTablaCruce()" placeholder="🔍 Buscar cliente, CUIT o Mail..." class="border rounded p-1.5 text-xs w-64">
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-slate-600">
                         <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
                             <tr>
-                                <th class="p-2.5">Enviar</th>
+                                <th class="p-2.5"><input type="checkbox" id="chk-marcar-todos" onchange="toggleMarcarTodos(this)"></th>
                                 <th class="p-2.5">Cliente</th>
                                 <th class="p-2.5">CUIT</th>
-                                <th class="p-2.5">Facturas</th>
-                                <th class="p-2.5">Deuda Total</th>
-                                <th class="p-2.5">Correo Destino</th>
-                                <th class="p-2.5">Estado Cruce</th>
+                                <th class="p-2.5">Monto Deuda</th>
+                                <th class="p-2.5">Correo Registrado</th>
+                                <th class="p-2.5">Acción</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-cruce-cuerpo">
-                        </tbody>
+                        <tbody id="tabla-cruce-cuerpo"></tbody>
                     </table>
                 </div>
 
                 <div class="mt-4 flex justify-end">
-                    <button onclick="confirmarEnvioMasivo()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-lg shadow text-xs flex items-center gap-2">
-                        🚀 NOTIFICAR SELECCIONADOS POR CORREO Y GUARDAR
+                    <button onclick="dispararEnvioSMTPBackend()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-lg shadow text-xs">
+                        🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO
                     </button>
                 </div>
             </section>
         </div>
 
-        <!-- 2. PESTAÑA: REGISTRO INDIVIDUAL / WPP -->
-        <div id="pestana-registro" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-            <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-1">
-                <h2 class="text-base font-bold text-slate-900 border-b pb-2 mb-4 text-rose-800">Carga Individual de Gestión</h2>
-                
-                <form id="form-gestion" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Sucursal ID</label>
-                            <input type="number" id="sucursal_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Cliente ID</label>
-                            <input type="number" id="cliente_id" value="1" required class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono (WhatsApp)</label>
-                        <input type="text" id="telefono_cliente" placeholder="Ej: 5492392123456" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Canal de Contacto</label>
-                        <select id="canal" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
-                            <option value="WhatsApp">WhatsApp</option>
-                            <option value="Email">Correo Electrónico</option>
-                            <option value="Llamada">Llamada Telefónica</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estado de la Gestión</label>
-                        <select id="estado_gestion" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
-                            <option value="Promesa de Pago">⏳ Promesa de Pago</option>
-                            <option value="En Negociacion">💬 En Negociación</option>
-                            <option value="Cobrado">💰 Cobrado / Liquidado</option>
-                            <option value="Sin Respuesta">⚠️ Sin Respuesta</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Promesa de Pago</label>
-                        <input type="date" id="fecha_promesa_pago" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Observaciones / Detalle</label>
-                        <textarea id="notas_observaciones" rows="3" placeholder="Detalles de la conversación..." class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-rose-800 outline-none"></textarea>
-                    </div>
-
-                    <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded text-sm shadow-sm">
-                        💾 Guardar Gestión Individual
-                    </button>
-                </form>
-                <div id="mensaje-estado" class="mt-3 text-xs text-center hidden p-2 rounded"></div>
-            </section>
-
-            <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 md:col-span-2">
-                <h2 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">Información Bancaria de Casa Central</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div class="p-3 bg-slate-50 border rounded-lg">
-                        <span class="font-bold text-slate-800 block">Banco Provincia</span>
-                        <span class="text-rose-700 font-bold block">Alias: HOJOBAR.PROV.BSAS</span>
-                    </div>
-                    <div class="p-3 bg-slate-50 border rounded-lg">
-                        <span class="font-bold text-slate-800 block">Banco Nación</span>
-                        <span class="text-rose-700 font-bold block">Alias: HOJOBAR.NACION</span>
-                    </div>
-                    <div class="p-3 bg-slate-50 border rounded-lg">
-                        <span class="font-bold text-slate-800 block">Banco Galicia</span>
-                        <span class="text-rose-700 font-bold block">Alias: HOJOBAR.GALICIA</span>
-                    </div>
-                    <div class="p-3 bg-slate-50 border rounded-lg">
-                        <span class="font-bold text-slate-800 block">Banco Macro</span>
-                        <span class="text-rose-700 font-bold block">Alias: HOJOBAR.MACRO</span>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <!-- 3. PESTAÑA: HISTORIAL Y AUDITORÍA -->
-        <div id="pestana-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-            <div class="flex justify-between items-center border-b pb-4 mb-4">
-                <h2 class="text-base font-bold text-slate-900">Historial de Eventos en PostgreSQL</h2>
-                <button onclick="cargarHistorial()" class="text-xs bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded font-semibold">
-                    🔄 Actualizar
-                </button>
-            </div>
+        <!-- 2. PESTAÑA: OMITIDOS (CLIENTES SIN MAIL) -->
+        <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-slate-600">
                     <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
                         <tr>
-                            <th class="p-3">Fecha / Hora</th>
-                            <th class="p-3">Sucursal</th>
-                            <th class="p-3">Cliente ID</th>
-                            <th class="p-3">Canal</th>
-                            <th class="p-3">Estado</th>
-                            <th class="p-3">Promesa</th>
-                            <th class="p-3">Observaciones</th>
+                            <th class="p-2.5">Cliente</th>
+                            <th class="p-2.5">CUIT</th>
+                            <th class="p-2.5">Deuda Total</th>
+                            <th class="p-2.5">Teléfono</th>
+                            <th class="p-2.5">Enviar WhatsApp</th>
+                            <th class="p-2.5">Gestionar</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-historial">
-                        <tr><td colspan="7" class="p-4 text-center text-slate-400">Cargando registros...</td></tr>
+                    <tbody id="tabla-omitidos-cuerpo">
+                        <tr><td colspan="6" class="p-4 text-center text-slate-400">Procesa primero tus archivos CSV para cargar la lista de omitidos.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- 4. PESTAÑA: MÉTRICAS -->
-        <div id="pestana-metricas" class="hidden space-y-6">
+        <!-- 3. PESTAÑA: HISTORIAL GENERAL -->
+        <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center border-b pb-4 mb-4">
+                <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
+                <button onclick="cargarHistorial()" class="text-xs bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded font-semibold">🔄 Actualizar</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
+                        <tr>
+                            <th class="p-3">Fecha</th>
+                            <th class="p-3">Sucursal</th>
+                            <th class="p-3">Cliente</th>
+                            <th class="p-3">Canal</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Promesa</th>
+                            <th class="p-3">Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-historial"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. PESTAÑA: CALENDARIO DE PROMESAS -->
+        <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Seleccionar Fecha para Consultar:</label>
+                    <input type="date" id="filtro-fecha-cal" onchange="filtrarCalendario()" class="border rounded p-2 text-sm w-full">
+                </div>
+                <div class="bg-slate-50 p-4 rounded-lg border">
+                    <h3 class="text-xs font-bold text-slate-800 mb-2" id="titulo-cal-dia">Eventos Agendados</h3>
+                    <ul id="lista-eventos-cal" class="text-xs space-y-2 text-slate-600">
+                        <li class="text-slate-400 italic">Selecciona una fecha.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. PESTAÑA: MÉTRICAS Y KPIS -->
+        <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
-                    <span class="text-xs font-bold text-slate-500 uppercase block mb-1">Total Gestiones</span>
-                    <span class="text-2xl font-black text-slate-900" id="kpi-total">0</span>
+                    <span class="text-xs font-bold text-slate-500 uppercase block mb-1">Mails Enviados</span>
+                    <span class="text-2xl font-black text-slate-900" id="kpi-mails">0</span>
                 </div>
                 <div class="bg-white p-5 rounded-lg border shadow-sm border-l-4 border-l-emerald-500">
-                    <span class="text-xs font-bold text-emerald-700 uppercase block mb-1">Cobrados</span>
-                    <span class="text-2xl font-black text-emerald-600" id="kpi-cobrados">0</span>
+                    <span class="text-xs font-bold text-emerald-700 uppercase block mb-1">Gestiones WPP</span>
+                    <span class="text-2xl font-black text-emerald-600" id="kpi-wpp">0</span>
                 </div>
                 <div class="bg-white p-5 rounded-lg border shadow-sm border-l-4 border-l-amber-500">
-                    <span class="text-xs font-bold text-amber-700 uppercase block mb-1">Promesas Activas</span>
+                    <span class="text-xs font-bold text-amber-700 uppercase block mb-1">Promesas Obtenidas</span>
                     <span class="text-2xl font-black text-amber-600" id="kpi-promesas">0</span>
                 </div>
             </div>
@@ -252,166 +194,251 @@
 
     </main>
 
-    <!-- Lógica JS Procesamiento CSV y Cruce de Datos -->
+    <!-- Diálogo de Configuración SMTP / Sucursal -->
+    <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Sucursal Autorizada:</label>
+                    <input type="text" id="cfg-sucursal" value="CASA CENTRAL" class="w-full border rounded p-2">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Correo Gmail Remitente:</label>
+                    <input type="email" id="cfg-email" placeholder="ejemplo@campoyasociados.com" class="w-full border rounded p-2">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Contraseña de Aplicación Gmail (Token):</label>
+                    <input type="password" id="cfg-pass" class="w-full border rounded p-2">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="cerrarConfiguracion()" class="px-3 py-1.5 text-xs bg-slate-200 rounded">Cancelar</button>
+                <button onclick="guardarConfiguracion()" class="px-3 py-1.5 text-xs bg-rose-800 text-white rounded font-bold">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lógica JS Client Side -->
     <script>
         const API_URL = 'https://cobranzas-campo-backend.onrender.com';
-        let clientesCruceMap = {};
+        let globalClientesCruceMap = {};
+        let globalHistorialData = [];
 
-        function cambiarPestana(idPestana) {
-            ['pestana-masivo', 'pestana-registro', 'pestana-historial', 'pestana-metricas'].forEach(id => {
+        function cambiarPestana(idTab) {
+            ['tab-masivo', 'tab-omitidos', 'tab-historial', 'tab-calendario', 'tab-metricas'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
-            ['tab-masivo', 'tab-registro', 'tab-historial', 'tab-metricas'].forEach(id => {
+            ['nav-masivo', 'nav-omitidos', 'nav-historial', 'nav-calendario', 'nav-metricas'].forEach(id => {
                 document.getElementById(id).classList.remove('active-tab');
             });
 
-            document.getElementById(idPestana).classList.remove('hidden');
-            document.getElementById('tab-' + idPestana.replace('pestana-', '')).classList.add('active-tab');
+            document.getElementById(idTab).classList.remove('hidden');
+            document.getElementById('nav-' + idTab.replace('tab-', '')).classList.add('active-tab');
         }
 
-        // Lectura y Cruce de Archivos CSV
-        async function procesarArchivosCSV(enviarTodos) {
+        // Configuración
+        function abrirConfiguracion() { document.getElementById('modal-config').classList.remove('hidden'); }
+        function cerrarConfiguracion() { document.getElementById('modal-config').classList.add('hidden'); }
+        function guardarConfiguracion() {
+            const suc = document.getElementById('cfg-sucursal').value;
+            const mail = document.getElementById('cfg-email').value;
+            const pass = document.getElementById('cfg-pass').value;
+
+            localStorage.setItem('cfg_sucursal', suc);
+            localStorage.setItem('cfg_email', mail);
+            localStorage.setItem('cfg_pass', pass);
+
+            document.getElementById('subtitulo-header').innerText = `SUCURSAL: ${suc.toUpperCase()} | Remitente: ${mail}`;
+            cerrarConfiguracion();
+            alert('✅ Configuración guardada correctamente.');
+        }
+
+        // Parsear CSV Clientes y Deudas
+        async function procesarArchivosCSV(marcarTodos) {
             const fileDeudas = document.getElementById('csv-deudas').files[0];
             const fileClientes = document.getElementById('csv-clientes').files[0];
 
             if (!fileDeudas || !fileClientes) {
-                alert('⚠️ Por favor selecciona AMBOS archivos CSV (Reporte de Saldos y Base de Clientes) para realizar el cruce.');
+                alert('⚠️ Por favor sube ambos archivos CSV.');
                 return;
             }
 
-            const textoDeudas = await fileDeudas.text();
-            const textoClientes = await fileClientes.text();
+            const txtDeudas = await fileDeudas.text();
+            const txtClientes = await fileClientes.text();
 
-            // 1. Cargar Base de Clientes
-            const clientesBaseMap = parsearCSVClientes(textoClientes);
+            const baseClientes = parsearCSVClientes(txtClientes);
+            globalClientesCruceMap = parsearCSVDeudas(txtDeudas, baseClientes);
 
-            // 2. Cargar Deudas y matchear
-            clientesCruceMap = parsearCSVDeudas(textoDeudas, clientesBaseMap);
-
-            renderizarTablaCruce(enviarTodos);
+            renderizarTablaCruce(marcarTodos);
+            renderizarTablaOmitidos();
         }
 
-        // Parsea CSV Clientes
         function parsearCSVClientes(texto) {
             const lineas = texto.split('\n');
             const mapa = {};
-            
             for (let i = 1; i < lineas.length; i++) {
                 if (!lineas[i].trim()) continue;
-                const col = lineas[i].split(';').length > 1 ? lineas[i].split(';') : lineas[i].split(',');
-                
+                const col = lineas[i].includes(';') ? lineas[i].split(';') : lineas[i].split(',');
                 if (col.length >= 2) {
-                    const clienteKey = col[0].replace(/"/g, '').trim().toUpperCase();
-                    const cuit = col[1] ? col[1].replace(/"/g, '').trim() : '';
+                    const cli = col[0].replace(/"/g, '').trim().toUpperCase();
+                    const cuit = col[1] ? col[1].replace(/"/g, '').trim() : '—';
                     const email = col.find(c => c.includes('@')) ? col.find(c => c.includes('@')).replace(/"/g, '').trim() : '';
-
-                    mapa[clienteKey] = { cuit, email };
+                    const tel = col.find(c => c.match(/^[0-9+ ]{8,}$/)) ? col.find(c => c.match(/^[0-9+ ]{8,}$/)).replace(/"/g, '').trim() : '';
+                    mapa[cli] = { cuit, email, tel };
                 }
             }
             return mapa;
         }
 
-        // Parsea CSV Deudas y matchea
-        function parsearCSVDeudas(texto, clientesBaseMap) {
+        function parsearCSVDeudas(texto, baseClientes) {
             const lineas = texto.split('\n');
-            const resultado = {};
-
+            const res = {};
             for (let i = 1; i < lineas.length; i++) {
                 if (!lineas[i].trim()) continue;
-                const col = lineas[i].split(';').length > 1 ? lineas[i].split(';') : lineas[i].split(',');
-
+                const col = lineas[i].includes(';') ? lineas[i].split(';') : lineas[i].split(',');
                 if (col.length >= 4) {
-                    const cliente = col[0].replace(/"/g, '').trim().toUpperCase();
-                    const comprobante = col[1] ? col[1].replace(/"/g, '').trim() : '';
+                    const cli = col[0].replace(/"/g, '').trim().toUpperCase();
+                    const comp = col[1] ? col[1].replace(/"/g, '').trim() : '';
                     const monto = parseFloat(col[col.length - 1].replace(/"/g, '').replace(/\./g, '').replace(',', '.')) || 0;
 
-                    if (!resultado[cliente]) {
-                        const infoBase = clientesBaseMap[cliente] || { cuit: '—', email: '' };
-                        resultado[cliente] = {
-                            cliente,
-                            cuit: infoBase.cuit,
-                            email: infoBase.email,
-                            facturas: [],
-                            deudaTotal: 0
-                        };
+                    if (!res[cli]) {
+                        const info = baseClientes[cli] || { cuit: '—', email: '', tel: '' };
+                        res[cli] = { cliente: cli, cuit: info.cuit, email: info.email, tel: info.tel, facturas: [], deudaTotal: 0 };
                     }
-
-                    resultado[cliente].facturas.push(comprobante);
-                    resultado[cliente].deudaTotal += monto;
+                    res[cli].facturas.push(comp);
+                    res[cli].deudaTotal += monto;
                 }
             }
-            return resultado;
+            return res;
         }
 
-        // Renderiza el resultado en la tabla
         function renderizarTablaCruce(marcarTodos) {
-            const contenedor = document.getElementById('seccion-cruce');
             const tbody = document.getElementById('tabla-cruce-cuerpo');
-            const badge = document.getElementById('resumen-cruce-badge');
-
-            const lista = Object.values(clientesCruceMap);
-            badge.innerText = `${lista.length} clientes vinculados`;
             tbody.innerHTML = '';
+            const lista = Object.values(globalClientesCruceMap);
 
-            lista.forEach((item, index) => {
+            lista.forEach((item, idx) => {
                 const tieneEmail = item.email.length > 0;
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50';
-
                 tr.innerHTML = `
-                    <td class="p-2.5">
-                        <input type="checkbox" id="chk-${index}" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}>
-                    </td>
-                    <td class="p-2.5 font-bold text-slate-800">${item.cliente}</td>
+                    <td class="p-2.5"><input type="checkbox" class="chk-cliente" data-idx="${idx}" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
+                    <td class="p-2.5 font-bold">${item.cliente}</td>
                     <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5">${item.facturas.length} comprobantes</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-semibold">⚠️ Sin Correo</span>'}</td>
-                    <td class="p-2.5">
-                        <span class="${tieneEmail ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'} text-[10px] px-2 py-0.5 rounded font-bold">
-                            ${tieneEmail ? 'Listo para Enviar' : 'Omitido / WhatsApp'}
-                        </span>
-                    </td>
+                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR')}</td>
+                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5"><button onclick="abrirDetalleDeuda('${item.cliente}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            contenedor.classList.remove('hidden');
+            document.getElementById('seccion-tabla-cruce').classList.remove('hidden');
         }
 
-        // Confirmación de envío e impacto en base de datos
-        async function confirmarEnvioMasivo() {
-            alert('🚀 Iniciando tanda de notificación de deudas y registro en PostgreSQL...');
-            cargarHistorial();
+        function renderizarTablaOmitidos() {
+            const tbody = document.getElementById('tabla-omitidos-cuerpo');
+            tbody.innerHTML = '';
+            const omitidos = Object.values(globalClientesCruceMap).filter(c => !c.email);
+
+            if (omitidos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Todos los clientes poseen correo electrónico.</td></tr>`;
+                return;
+            }
+
+            omitidos.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="p-2.5 font-bold">${item.cliente}</td>
+                    <td class="p-2.5">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR')}</td>
+                    <td class="p-2.5">${item.tel || '—'}</td>
+                    <td class="p-2.5"><button onclick="enviarWhatsAppOmitido('${item.cliente}', '${item.tel}', ${item.deudaTotal})" class="bg-emerald-600 text-white px-2 py-1 rounded font-bold text-[10px]">📲 WhatsApp</button></td>
+                    <td class="p-2.5"><button onclick="registrarGestionManual('${item.cliente}')" class="bg-slate-800 text-white px-2 py-1 rounded text-[10px]">📝 Gestionar</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Disparar envíos por Backend
+        async function dispararEnvioSMTPBackend() {
+            const mail = localStorage.getItem('cfg_email');
+            const pass = localStorage.getItem('cfg_pass');
+            const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
+
+            if (!mail || !pass) {
+                alert('⚠️ Configura primero las credenciales SMTP en ⚙️ Configuración.');
+                abrirConfiguracion();
+                return;
+            }
+
+            const seleccionados = [];
+            const checkboxes = document.querySelectorAll('.chk-cliente:checked');
+            const listaAll = Object.values(globalClientesCruceMap);
+
+            checkboxes.forEach(chk => {
+                const idx = chk.getAttribute('data-idx');
+                seleccionados.push(listaAll[idx]);
+            });
+
+            if (seleccionados.length === 0) {
+                alert('Por favor tilda al menos un cliente para enviar.');
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    configSMTP: { user: mail, pass: pass },
+                    listaClientes: seleccionados,
+                    sucursal: suc
+                })
+            });
+
+            const data = await res.json();
+            if (data.exito) {
+                alert(`✅ Notificaciones enviadas correctamente: ${data.enviados} correos despachados.`);
+                cargarHistorial();
+            } else {
+                alert('❌ Error al enviar correos: ' + data.error);
+            }
         }
 
         // Cargar Historial
         async function cargarHistorial() {
-            const tabla = document.getElementById('tabla-historial');
-            try {
-                const respuesta = await fetch(`${API_URL}/api/historial`);
-                const datos = await respuesta.json();
+            const tbody = document.getElementById('tabla-historial');
+            const res = await fetch(`${API_URL}/api/historial`);
+            const datos = await res.json();
+            globalHistorialData = datos;
 
-                if (!Array.isArray(datos) || datos.length === 0) {
-                    tabla.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No hay gestiones registradas aún.</td></tr>`;
-                    return;
-                }
+            tbody.innerHTML = datos.map(item => `
+                <tr class="border-b">
+                    <td class="p-3">${new Date(item.fecha_registro).toLocaleString('es-AR')}</td>
+                    <td class="p-3 font-semibold">Sucursal ${item.sucursal_id}</td>
+                    <td class="p-3">${item.cliente_nombre || 'Cliente ID ' + item.cliente_id}</td>
+                    <td class="p-3">${item.canal || 'Email'}</td>
+                    <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion}</td>
+                    <td class="p-3">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
+                    <td class="p-3 text-slate-500">${item.notas_observaciones || '-'}</td>
+                </tr>
+            `).join('');
 
-                tabla.innerHTML = datos.map(item => `
-                    <tr class="border-b hover:bg-slate-50">
-                        <td class="p-3">${item.fecha_registro ? new Date(item.fecha_registro).toLocaleString('es-AR') : '-'}</td>
-                        <td class="p-3 font-semibold">Sucursal ${item.sucursal_id || 1}</td>
-                        <td class="p-3">Cliente ID ${item.cliente_id || 1}</td>
-                        <td class="p-3"><span class="bg-slate-100 px-2 py-0.5 rounded">${item.canal || 'N/A'}</span></td>
-                        <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion || 'Registrado'}</td>
-                        <td class="p-3">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
-                        <td class="p-3 text-slate-500">${item.notas_observaciones || '-'}</td>
-                    </tr>
-                `).join('');
+            actualizarContadorAlertas();
+        }
 
-            } catch (error) {
-                tabla.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-amber-600">Servidor conectando...</td></tr>`;
-            }
+        function actualizarContadorAlertas() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const vencidas = globalHistorialData.filter(d => d.fecha_promesa_pago && d.fecha_promesa_pago <= hoy && d.estado_gestion !== 'Cobrado');
+            document.getElementById('badge-notificaciones').innerText = vencidas.length;
+        }
+
+        function mostrarPopUpNotificaciones() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const vencidas = globalHistorialData.filter(d => d.fecha_promesa_pago && d.fecha_promesa_pago <= hoy && d.estado_gestion !== 'Cobrado');
+            if (vencidas.length === 0) alert('✅ No hay alertas pendientes de promesas vencidas.');
+            else alert(`🚨 ATENCIÓN: Hay ${vencidas.length} promesas de pago vencidas pendientes de cobro.`);
         }
 
         cargarHistorial();
