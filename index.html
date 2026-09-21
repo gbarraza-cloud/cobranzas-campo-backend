@@ -29,7 +29,7 @@
         </div>
     </header>
 
-    <!-- Pestañas Principales (Swing JTabbedPane) -->
+    <!-- Pestañas Principales -->
     <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
 
         <nav class="flex border-b border-slate-200 bg-white rounded-t-lg shadow-sm overflow-x-auto mb-6">
@@ -100,7 +100,7 @@
                 </div>
 
                 <div class="mt-4 flex justify-end">
-                    <button onclick="dispararEnvioSMTPBackend()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-lg shadow text-xs">
+                    <button id="btn-enviar-smtp" onclick="dispararEnvioSMTPBackend()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-lg shadow text-xs flex items-center gap-2">
                         🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO
                     </button>
                 </div>
@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- Lógica JS Client Side (Parsers + Cruces + Métricas) -->
+    <!-- Lógica JS Client Side de Envíos y Cruces -->
     <script>
         const API_URL = 'https://cobranzas-campo-backend.onrender.com';
         let globalClientesCruceMap = {};
@@ -266,28 +266,23 @@
         function abrirConfiguracion() { document.getElementById('modal-config').classList.remove('hidden'); }
         function cerrarConfiguracion() { document.getElementById('modal-config').classList.add('hidden'); }
         
-        async function guardarConfiguracion() {
+        function guardarConfiguracion() {
             const suc = document.getElementById('cfg-sucursal').value;
             const mail = document.getElementById('cfg-email').value;
             const pass = document.getElementById('cfg-pass').value;
 
-            const res = await fetch(`${API_URL}/api/test-smtp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mail, pass })
-            });
-            const data = await res.json();
-
-            if (data.exito) {
-                localStorage.setItem('cfg_sucursal', suc);
-                localStorage.setItem('cfg_email', mail);
-                localStorage.setItem('cfg_pass', pass);
-                document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${suc.toUpperCase()} | Remitente: ${mail}`;
-                cerrarConfiguracion();
-                alert('✅ Credenciales SMTP validadas y guardadas.');
-            } else {
-                alert('❌ Error de autenticación en Gmail: ' + data.error);
+            if (!mail || !pass) {
+                alert('⚠️ Por favor completa el correo y la contraseña de aplicación.');
+                return;
             }
+
+            localStorage.setItem('cfg_sucursal', suc);
+            localStorage.setItem('cfg_email', mail);
+            localStorage.setItem('cfg_pass', pass);
+            
+            document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${suc.toUpperCase()} | Remitente: ${mail}`;
+            cerrarConfiguracion();
+            alert('✅ Configuración guardada en el navegador.');
         }
 
         async function procesarArchivosCSV(marcarTodos) {
@@ -309,7 +304,6 @@
             renderizarTablaOmitidos();
         }
 
-        // Parser Inteligente de Base Clientes (Igual a Java Swing)
         function parsearCSVClientesFlex(texto) {
             const lineas = texto.split(/\r?\n/);
             const mapa = {};
@@ -421,6 +415,12 @@
             document.getElementById('seccion-tabla-cruce').classList.remove('hidden');
         }
 
+        function toggleMarcarTodos(chkMain) {
+            document.querySelectorAll('.chk-cliente:not(:disabled)').forEach(chk => {
+                chk.checked = chkMain.checked;
+            });
+        }
+
         function renderizarTablaOmitidos() {
             const tbody = document.getElementById('tabla-omitidos-cuerpo');
             tbody.innerHTML = '';
@@ -480,63 +480,86 @@
             cargarHistorial();
         }
 
+        // FUNCIÓN MEJORADA DE ENVÍO DE CORREOS
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
             const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
 
-            if (!mail || !pass) { alert('⚠️ Configura primero las credenciales SMTP.'); abrirConfiguracion(); return; }
+            if (!mail || !pass) {
+                alert('⚠️ Faltan credenciales. Abre Configuración (⚙️) e ingresa tu correo y token de Gmail.');
+                abrirConfiguracion();
+                return;
+            }
 
             const seleccionados = [];
-            const checkboxes = document.querySelectorAll('.chk-cliente:checked');
+            const checkboxes = document.querySelectorAll('#tabla-cruce-cuerpo input[type="checkbox"]:checked');
             const listaAll = Object.values(globalClientesCruceMap);
 
             checkboxes.forEach(chk => {
                 const idx = chk.getAttribute('data-idx');
-                seleccionados.push(listaAll[idx]);
+                if (idx !== null && listaAll[idx]) {
+                    seleccionados.push(listaAll[idx]);
+                }
             });
 
-            if (seleccionados.length === 0) { alert('Por favor selecciona al menos un cliente.'); return; }
+            if (seleccionados.length === 0) {
+                alert('⚠️ Por favor tilda al menos un cliente de la lista para enviar.');
+                return;
+            }
 
-            const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    configSMTP: { user: mail, pass: pass },
-                    listaClientes: seleccionados,
-                    sucursal: suc
-                })
-            });
+            const btnEnvio = document.getElementById('btn-enviar-smtp');
+            btnEnvio.disabled = true;
+            btnEnvio.innerText = '⏳ Enviando notificaciones...';
 
-            const data = await res.json();
-            if (data.exito) {
-                alert(`✅ Notificaciones enviadas con éxito: ${data.enviados} correos despachados.`);
-                cargarHistorial();
-            } else {
-                alert('❌ Error enviando correos: ' + data.error);
+            try {
+                const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        configSMTP: { user: mail, pass: pass },
+                        listaClientes: seleccionados,
+                        sucursal: suc
+                    })
+                });
+
+                const data = await res.json();
+                if (data.exito) {
+                    alert(`✅ ¡Proceso finalizado! Se enviaron ${data.enviados} correos con éxito.`);
+                    cargarHistorial();
+                } else {
+                    alert('❌ Error reportado por el servidor: ' + data.error);
+                }
+            } catch (err) {
+                alert('❌ Error de conexión al servidor: ' + err.message);
+            } finally {
+                btnEnvio.disabled = false;
+                btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
             }
         }
 
         async function cargarHistorial() {
             const tbody = document.getElementById('tabla-historial');
-            const res = await fetch(`${API_URL}/api/historial`);
-            const datos = await res.json();
-            globalHistorialData = datos;
+            try {
+                const res = await fetch(`${API_URL}/api/historial`);
+                const datos = await res.json();
+                globalHistorialData = datos;
 
-            tbody.innerHTML = datos.map(item => `
-                <tr class="border-b">
-                    <td class="p-3">${new Date(item.fecha_registro).toLocaleString('es-AR')}</td>
-                    <td class="p-3 font-semibold">${item.sucursal || 'CASA CENTRAL'}</td>
-                    <td class="p-3">${item.cliente_nombre || 'Cliente ID ' + item.cliente_id}</td>
-                    <td class="p-3">${item.canal || 'Email'}</td>
-                    <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion}</td>
-                    <td class="p-3">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
-                    <td class="p-3 text-slate-500">${item.notas_observaciones || '-'}</td>
-                </tr>
-            `).join('');
+                tbody.innerHTML = datos.map(item => `
+                    <tr class="border-b">
+                        <td class="p-3">${new Date(item.fecha_registro).toLocaleString('es-AR')}</td>
+                        <td class="p-3 font-semibold">${item.sucursal || 'CASA CENTRAL'}</td>
+                        <td class="p-3">${item.cliente_nombre || 'Cliente ID ' + item.cliente_id}</td>
+                        <td class="p-3">${item.canal || 'Email'}</td>
+                        <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion}</td>
+                        <td class="p-3">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
+                        <td class="p-3 text-slate-500">${item.notas_observaciones || '-'}</td>
+                    </tr>
+                `).join('');
 
-            actualizarContadorAlertas();
-            actualizarMetricas();
+                actualizarContadorAlertas();
+                actualizarMetricas();
+            } catch (err) {}
         }
 
         function actualizarContadorAlertas() {
@@ -560,6 +583,15 @@
             document.getElementById('kpi-mails').innerText = mails;
             document.getElementById('kpi-wpp').innerText = wpp;
             document.getElementById('kpi-promesas').innerText = promesas;
+        }
+
+        // Cargar credenciales guardadas si existen
+        const savedMail = localStorage.getItem('cfg_email');
+        const savedSuc = localStorage.getItem('cfg_sucursal');
+        if (savedMail) document.getElementById('cfg-email').value = savedMail;
+        if (savedSuc) {
+            document.getElementById('cfg-sucursal').value = savedSuc;
+            document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${savedSuc.toUpperCase()} | Remitente: ${savedMail}`;
         }
 
         cargarHistorial();
