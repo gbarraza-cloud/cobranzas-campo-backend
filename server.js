@@ -9,8 +9,10 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Servir la interfaz estática desde la misma raíz
 app.use(express.static(__dirname));
 
+// Configuración resiliente de PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -52,13 +54,13 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL listo.');
+    console.log('✅ Base de datos PostgreSQL inicializada correctamente.');
   } catch (err) {
-    console.log('⚠️ DB:', err.message);
+    console.log('⚠️ Aviso DB (El servidor de correos seguirá funcionando):', err.message);
   }
 }
 
-// Plantilla HTML Exacta del código Java Swing
+// Plantilla HTML exacta del sistema Java Swing
 function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   let totalDeuda = 0.0;
   const filas = (facturas || []).map(f => {
@@ -130,7 +132,7 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Test SMTP
+// Endpoint: Test SMTP
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
@@ -146,7 +148,7 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// ENVÍO DE CORREOS DESACOPLADO E INSTANTÁNEO
+// Endpoint: Enviar Correos Masivos (RESPUESTA INMEDIATA DESACOPLADA)
 app.post('/api/enviar-emails-masivos', (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
@@ -155,10 +157,10 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
 
   const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
 
-  // RESPUESTA INMEDIATA AL NAVEGADOR EN MILISEGUNDOS
+  // RESPUESTA HTTP INSTANTÁNEA EN 0.1 SEGUNDOS (Evita que el navegador espere)
   res.json({ exito: true, enviados: clientesValidos.length });
 
-  // PROCESAMIENTO ASÍNCRONO EN SEGUNDO PLANO
+  // PROCESAMIENTO EN SEGUNDO PLANO DE FORMA ASÍNCRONA
   setImmediate(() => {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -200,6 +202,7 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
   });
 });
 
+// Endpoint: Historial
 app.get('/api/historial', async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) return res.json([]);
@@ -210,6 +213,7 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
+// Endpoint: Gestiones Individuales
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
