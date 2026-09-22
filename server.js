@@ -9,10 +9,8 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir la interfaz web desde la raíz
 app.use(express.static(__dirname));
 
-// Configuración de la base de datos PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -54,13 +52,12 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL verificado.');
+    console.log('✅ PostgreSQL inicializado.');
   } catch (err) {
     console.log('⚠️ Aviso DB:', err.message);
   }
 }
 
-// Generación de plantilla HTML idéntica a Java Swing
 function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   let totalDeuda = 0.0;
   const filas = (facturas || []).map(f => {
@@ -132,46 +129,26 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Endpoint de verificación SMTP en puerto seguro 465
-app.post('/api/test-smtp', async (req, res) => {
-  const { mail, pass } = req.body;
-  try {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: { user: mail, pass: pass },
-      connectionTimeout: 5000
-    });
-    await transporter.verify();
-    return res.json({ exito: true });
-  } catch (err) {
-    return res.status(400).json({ exito: false, error: err.message });
-  }
-});
-
-// ENVÍO DIRECTO Y EN TIEMPO REAL
+// Endpoint Enviar Emails Masivos
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
+
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
-    return res.status(400).json({ exito: false, error: 'Credenciales incompletas.' });
+    return res.status(400).json({ exito: false, error: 'Credenciales SMTP incompletas.' });
   }
 
-  const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
+  const clientesValidos = (listaClientes || []).filter(item => item && item.email && item.email.includes('@'));
 
   if (clientesValidos.length === 0) {
-    return res.status(400).json({ exito: false, error: 'No se encontraron clientes con correo electrónico válido.' });
+    return res.json({ exito: true, enviados: 0, mensaje: 'No hay clientes válidos con correo para enviar.' });
   }
 
-  // Transporte seguro por SSL (Puerto 465 directo)
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
     auth: { user: configSMTP.user, pass: configSMTP.pass },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000
+    connectionTimeout: 10000
   });
 
   let enviados = 0;
@@ -191,12 +168,12 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
       enviados++;
 
       if (process.env.DATABASE_URL) {
-        await pool.query(
+        pool.query(
           'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
           [item.cliente, item.email, 'ENVIADO']
         ).catch(() => {});
 
-        await pool.query(
+        pool.query(
           `INSERT INTO historial_gestiones_y_eventos 
            (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -209,7 +186,7 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
     }
   }
 
-  return res.json({ exito: true, enviados: enviados, errores: errores });
+  return res.json({ exito: true, enviados, errores });
 });
 
 app.get('/api/historial', async (req, res) => {
