@@ -9,10 +9,10 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir la interfaz estática desde la misma raíz
+// Servir la interfaz web desde la raíz
 app.use(express.static(__dirname));
 
-// Configuración resiliente de PostgreSQL
+// Configuración de la base de datos PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -54,13 +54,13 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Base de datos PostgreSQL inicializada correctamente.');
+    console.log('✅ PostgreSQL verificado.');
   } catch (err) {
-    console.log('⚠️ Aviso DB (El servidor de correos seguirá funcionando):', err.message);
+    console.log('⚠️ Aviso DB:', err.message);
   }
 }
 
-// Plantilla HTML exacta del sistema Java Swing
+// Generación de plantilla HTML idéntica a Java Swing
 function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   let totalDeuda = 0.0;
   const filas = (facturas || []).map(f => {
@@ -132,12 +132,14 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Endpoint: Test SMTP
+// Endpoint de verificación SMTP en puerto seguro 465
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com', port: 587, secure: false,
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: { user: mail, pass: pass },
       connectionTimeout: 5000
     });
@@ -148,8 +150,8 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// Endpoint: Enviar Correos Masivos (RESPUESTA INMEDIATA DESACOPLADA)
-app.post('/api/enviar-emails-masivos', (req, res) => {
+// ENVÍO DIRECTO Y EN TIEMPO REAL
+app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
     return res.status(400).json({ exito: false, error: 'Credenciales incompletas.' });
@@ -157,52 +159,59 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
 
   const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
 
-  // RESPUESTA HTTP INSTANTÁNEA EN 0.1 SEGUNDOS (Evita que el navegador espere)
-  res.json({ exito: true, enviados: clientesValidos.length });
+  if (clientesValidos.length === 0) {
+    return res.status(400).json({ exito: false, error: 'No se encontraron clientes con correo electrónico válido.' });
+  }
 
-  // PROCESAMIENTO EN SEGUNDO PLANO DE FORMA ASÍNCRONA
-  setImmediate(() => {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: { user: configSMTP.user, pass: configSMTP.pass },
-      pool: true,
-      maxConnections: 3
-    });
-
-    clientesValidos.forEach(async (item) => {
-      const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
-
-      try {
-        await transporter.sendMail({
-          from: `"Campo y Asociados — Cobranzas" <${configSMTP.user}>`,
-          to: item.email,
-          subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
-          html: htmlBody
-        });
-
-        if (process.env.DATABASE_URL) {
-          pool.query(
-            'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
-            [item.cliente, item.email, 'ENVIADO']
-          ).catch(() => {});
-
-          pool.query(
-            `INSERT INTO historial_gestiones_y_eventos 
-             (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
-          ).catch(() => {});
-        }
-      } catch (e) {
-        console.error("Error enviando correo a", item.cliente, e.message);
-      }
-    });
+  // Transporte seguro por SSL (Puerto 465 directo)
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: configSMTP.user, pass: configSMTP.pass },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000
   });
+
+  let enviados = 0;
+  let errores = [];
+
+  for (const item of clientesValidos) {
+    const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
+
+    try {
+      await transporter.sendMail({
+        from: `"Campo y Asociados — Cobranzas" <${configSMTP.user}>`,
+        to: item.email,
+        subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
+        html: htmlBody
+      });
+
+      enviados++;
+
+      if (process.env.DATABASE_URL) {
+        await pool.query(
+          'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
+          [item.cliente, item.email, 'ENVIADO']
+        ).catch(() => {});
+
+        await pool.query(
+          `INSERT INTO historial_gestiones_y_eventos 
+           (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
+        ).catch(() => {});
+      }
+    } catch (e) {
+      console.error("Error enviando correo a", item.cliente, e.message);
+      errores.push({ cliente: item.cliente, error: e.message });
+    }
+  }
+
+  return res.json({ exito: true, enviados: enviados, errores: errores });
 });
 
-// Endpoint: Historial
 app.get('/api/historial', async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) return res.json([]);
@@ -213,7 +222,6 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
-// Endpoint: Gestiones Individuales
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
@@ -248,6 +256,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor activo en puerto ${PORT}`);
+  console.log(`🚀 Servidor listo escuchando en puerto ${PORT}`);
   initDB();
 });
