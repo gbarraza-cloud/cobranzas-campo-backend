@@ -9,10 +9,8 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir el Frontend estático
 app.use(express.static(__dirname));
 
-// Configuración PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -54,12 +52,13 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL inicializado.');
+    console.log('✅ PostgreSQL listo.');
   } catch (err) {
-    console.log('⚠️ Aviso DB:', err.message);
+    console.log('⚠️ DB:', err.message);
   }
 }
 
+// Plantilla HTML Exacta del código Java Swing
 function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   let totalDeuda = 0.0;
   const filas = (facturas || []).map(f => {
@@ -67,13 +66,13 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
     totalDeuda += montoNum;
     return `
       <tr style='border-bottom: 1px solid #e2e8f0;'>
-        <td style='padding: 8px;'>${f.cliente || cliente}</td>
-        <td style='padding: 8px;'>${f.empresa || '—'}</td>
-        <td style='padding: 8px;'>${f.comprobante || '—'}</td>
-        <td style='padding: 8px; text-align: center;'>${f.fechaComp || '—'}</td>
-        <td style='padding: 8px; text-align: center;'>${f.fechaVenc || '—'}</td>
-        <td style='padding: 8px; text-align: center;'>${f.moneda || 'ARS'}</td>
-        <td style='padding: 8px; text-align: right; font-weight: bold;'>$${montoNum.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td style='padding: 10px;'>${f.cliente || cliente}</td>
+        <td style='padding: 10px;'>${f.empresa || '—'}</td>
+        <td style='padding: 10px;'>${f.comprobante || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.fechaComp || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.fechaVenc || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.moneda || 'ARS'}</td>
+        <td style='padding: 10px; text-align: right; font-weight: bold;'>$${montoNum.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
       </tr>`;
   }).join('');
 
@@ -131,16 +130,14 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Test SMTP usando Puerto 465 (SSL Directo sin congelamiento)
+// Test SMTP
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com', 
-      port: 465, 
-      secure: true,
+      host: 'smtp.gmail.com', port: 587, secure: false,
       auth: { user: mail, pass: pass },
-      connectionTimeout: 8000
+      connectionTimeout: 5000
     });
     await transporter.verify();
     return res.json({ exito: true });
@@ -149,35 +146,30 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// Endpoint: Enviar Correos Masivos con Respuesta Inmediata
+// ENVÍO DE CORREOS DESACOPLADO E INSTANTÁNEO
 app.post('/api/enviar-emails-masivos', (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
-    return res.status(400).json({ exito: false, error: 'Credenciales SMTP incompletas.' });
+    return res.status(400).json({ exito: false, error: 'Credenciales incompletas.' });
   }
 
   const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
 
-  // RESPUESTA INMEDIATA EN 0.1 SEGUNDOS AL NAVEGADOR
-  res.json({ 
-    exito: true, 
-    enviados: clientesValidos.length, 
-    mensaje: "Instrucción recibida. Procesando envíos..." 
-  });
+  // RESPUESTA INMEDIATA AL NAVEGADOR EN MILISEGUNDOS
+  res.json({ exito: true, enviados: clientesValidos.length });
 
-  // Procesamiento Asíncrono desacoplado
-  setImmediate(async () => {
+  // PROCESAMIENTO ASÍNCRONO EN SEGUNDO PLANO
+  setImmediate(() => {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // SSL directo
+      port: 587,
+      secure: false,
       auth: { user: configSMTP.user, pass: configSMTP.pass },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000
+      pool: true,
+      maxConnections: 3
     });
 
-    for (const item of clientesValidos) {
+    clientesValidos.forEach(async (item) => {
       const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
 
       try {
@@ -187,8 +179,6 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
           subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
           html: htmlBody
         });
-
-        console.log(`✅ Mail enviado a: ${item.cliente} (${item.email})`);
 
         if (process.env.DATABASE_URL) {
           pool.query(
@@ -203,14 +193,13 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
             [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
           ).catch(() => {});
         }
-      } catch (err) {
-        console.error(`❌ Error al enviar a ${item.cliente}:`, err.message);
+      } catch (e) {
+        console.error("Error enviando correo a", item.cliente, e.message);
       }
-    }
+    });
   });
 });
 
-// Endpoint: Historial
 app.get('/api/historial', async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) return res.json([]);
@@ -221,7 +210,6 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
-// Endpoint: Gestiones Individuales
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
@@ -256,6 +244,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor único activo escuchando en puerto ${PORT}`);
+  console.log(`🚀 Servidor activo en puerto ${PORT}`);
   initDB();
 });
