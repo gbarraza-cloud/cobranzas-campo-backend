@@ -49,7 +49,7 @@
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
+        <!-- 1. PESTAÑA: CARGA MASIVA -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
@@ -214,7 +214,7 @@
         </div>
     </div>
 
-    <!-- Modal Registrar Gestión WPP -->
+    <!-- Modal Gestión WPP -->
     <div id="modal-gestion-wpp" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4" id="wpp-modal-titulo">Registrar Gestión WPP</h3>
@@ -398,15 +398,13 @@
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
-                
-                tr.setAttribute('data-json', JSON.stringify(item));
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold">${item.cliente}</td>
-                    <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5 font-bold celda-cliente">${item.cliente}</td>
+                    <td class="p-2.5 celda-cuit">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700 celda-monto" data-monto="${item.deudaTotal}">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2.5 celda-email">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
                     <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.map(f => f.comprobante).join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -480,7 +478,7 @@
             cargarHistorial();
         }
 
-        // ENVÍO DE CORREOS DIRECTO Y REAL
+        // LECTURA DIRECTA DE LAS CELDAS VISIBLES DE LA TABLA (100% GARANTIZADO)
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -498,26 +496,39 @@
             filasTabla.forEach(row => {
                 const chk = row.querySelector('.chk-cliente');
                 if (chk && chk.checked) {
-                    const rawJson = row.getAttribute('data-json');
-                    if (rawJson) {
-                        try {
-                            const clienteObj = JSON.parse(rawJson);
-                            if (clienteObj && clienteObj.email) {
-                                seleccionados.push(clienteObj);
-                            }
-                        } catch (e) {}
+                    const nomCli = row.querySelector('.celda-cliente')?.innerText.trim() || '';
+                    const cuitCli = row.querySelector('.celda-cuit')?.innerText.trim() || '—';
+                    const emailCli = row.querySelector('.celda-email')?.innerText.trim() || '';
+                    const montoRaw = row.querySelector('.celda-monto')?.getAttribute('data-monto') || '0';
+
+                    if (emailCli && emailCli.includes('@')) {
+                        // Buscamos si tenemos facturas desglosadas o armamos la factura global
+                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: parseFloat(montoRaw) || 0 }];
+                        
+                        const itemOriginal = Object.values(globalClientesCruceMap).find(c => c.cliente.toUpperCase() === nomCli.toUpperCase());
+                        if (itemOriginal && itemOriginal.facturas && itemOriginal.facturas.length > 0) {
+                            facturasCli = itemOriginal.facturas;
+                        }
+
+                        seleccionados.push({
+                            cliente: nomCli,
+                            cuit: cuitCli,
+                            email: emailCli,
+                            deudaTotal: parseFloat(montoRaw) || 0,
+                            facturas: facturasCli
+                        });
                     }
                 }
             });
 
             if (seleccionados.length === 0) {
-                alert('⚠️ Por favor tilda al menos un cliente con correo registrado.');
+                alert('⚠️ Por favor tilda al menos un cliente con correo electrónico válido.');
                 return;
             }
 
             const btnEnvio = document.getElementById('btn-enviar-smtp');
             btnEnvio.disabled = true;
-            btnEnvio.innerText = '⏳ Enviando correos en tiempo real...';
+            btnEnvio.innerText = '⏳ Enviando correo en tiempo real...';
 
             try {
                 const res = await fetch(`/api/enviar-emails-masivos`, {
@@ -533,13 +544,13 @@
                 const data = await res.json();
                 
                 if (data.exito) {
-                    alert(`✅ ¡Envíos finalizados! Se entregaron ${data.enviados} correo(s) exitosamente.`);
+                    alert(`✅ ¡Envíos completados! Se entregaron ${data.enviados} correo(s) exitosamente.`);
                     cargarHistorial();
                 } else {
                     alert('❌ Error reportado por el servidor: ' + data.error);
                 }
             } catch (err) {
-                alert('⚠️ Estado: ' + err.message);
+                alert('⚠️ Estado de conexión: ' + err.message);
             } finally {
                 btnEnvio.disabled = false;
                 btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
