@@ -52,7 +52,7 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL inicializado.');
+    console.log('✅ Base de datos PostgreSQL inicializada correctamente.');
   } catch (err) {
     console.log('⚠️ Aviso DB:', err.message);
   }
@@ -129,7 +129,6 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Endpoint Enviar Emails Masivos
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
 
@@ -140,7 +139,7 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
   const clientesValidos = (listaClientes || []).filter(item => item && item.email && item.email.includes('@'));
 
   if (clientesValidos.length === 0) {
-    return res.json({ exito: true, enviados: 0, mensaje: 'No hay clientes válidos con correo para enviar.' });
+    return res.json({ exito: true, enviados: 0, mensaje: 'No se encontraron destinatarios válidos.' });
   }
 
   const transporter = nodemailer.createTransport({
@@ -233,6 +232,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor listo escuchando en puerto ${PORT}`);
+  console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
   initDB();
 });
