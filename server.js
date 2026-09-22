@@ -9,10 +9,10 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir el Frontend (index.html) desde el mismo servidor
+// Servir el Frontend estático
 app.use(express.static(__dirname));
 
-// Conexión resiliente a PostgreSQL
+// Configuración PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -54,9 +54,9 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Base de datos unificada conectada.');
+    console.log('✅ PostgreSQL inicializado.');
   } catch (err) {
-    console.log('⚠️ Aviso DB (El servidor de correos seguirá operando):', err.message);
+    console.log('⚠️ Aviso DB:', err.message);
   }
 }
 
@@ -146,54 +146,62 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// Endpoint: Enviar Correos Masivos
+// Endpoint: Enviar Correos Masivos ULTRARRÁPIDO
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
     return res.status(400).json({ exito: false, error: 'Credenciales SMTP incompletas.' });
   }
 
+  // Transporte reutilizable optimizado
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', port: 587, secure: false,
-    auth: { user: configSMTP.user, pass: configSMTP.pass }
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: { user: configSMTP.user, pass: configSMTP.pass },
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100
   });
 
-  let enviados = 0;
-  let errores = [];
+  const promesasEnvio = listaClientes
+    .filter(item => item.email && item.email.includes('@'))
+    .map(async (item) => {
+      const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
 
-  for (const item of listaClientes) {
-    if (!item.email || !item.email.includes('@')) continue;
+      try {
+        await transporter.sendMail({
+          from: `"Campo y Asociados — Cobranzas" <${configSMTP.user}>`,
+          to: item.email,
+          subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
+          html: htmlBody
+        });
 
-    const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
+        // Registro asíncrono sin bloquear el hilo principal
+        if (process.env.DATABASE_URL) {
+          pool.query(
+            'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
+            [item.cliente, item.email, 'ENVIADO']
+          ).catch(() => {});
 
-    try {
-      await transporter.sendMail({
-        from: `"Campo y Asociados — Cobranzas" <${configSMTP.user}>`,
-        to: item.email,
-        subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
-        html: htmlBody
-      });
+          pool.query(
+            `INSERT INTO historial_gestiones_y_eventos 
+             (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
+          ).catch(() => {});
+        }
 
-      enviados++;
-
-      if (process.env.DATABASE_URL) {
-        pool.query(
-          'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
-          [item.cliente, item.email, 'ENVIADO']
-        ).catch(() => {});
-
-        pool.query(
-          `INSERT INTO historial_gestiones_y_eventos 
-           (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
-        ).catch(() => {});
+        return { exito: true };
+      } catch (err) {
+        return { exito: false, cliente: item.cliente, error: err.message };
       }
+    });
 
-    } catch (err) {
-      errores.push({ cliente: item.cliente, error: err.message });
-    }
-  }
+  // Ejecución en paralelo
+  const resultados = await Promise.all(promesasEnvio);
+  const enviados = resultados.filter(r => r.exito).length;
+  const errores = resultados.filter(r => !r.exito);
 
   return res.json({ exito: true, enviados, errores });
 });
@@ -238,7 +246,6 @@ app.post('/api/gestiones', async (req, res) => {
   }
 });
 
-// Entregar index.html en cualquier otra ruta
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
