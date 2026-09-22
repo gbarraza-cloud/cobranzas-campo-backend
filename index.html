@@ -1,608 +1,261 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Cobranzas Automáticas — Campo y Asociados</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .active-tab { border-bottom: 3px solid #b80032; color: #b80032; font-weight: bold; }
-    </style>
-</head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
-
-    <!-- Header Corporativo -->
-    <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-bold tracking-wide">CAMPO & ASOCIADOS | Módulo de Cobranzas</h1>
-                <p id="subtitulo-header" class="text-xs text-rose-400 font-semibold">MÓDULO DE COBRANZAS — CASA CENTRAL</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="mostrarPopUpNotificaciones()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2">
-                    🔔 Alertas <span id="badge-notificaciones" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-                </button>
-                <button onclick="abrirConfiguracion()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 font-semibold flex items-center gap-1">
-                    ⚙️ Configuración
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
-
-        <nav class="flex border-b border-slate-200 bg-white rounded-t-lg shadow-sm overflow-x-auto mb-6">
-            <button onclick="cambiarPestana('tab-masivo')" id="nav-masivo" class="active-tab px-5 py-3 text-sm flex items-center gap-2 whitespace-nowrap">
-                🚀 Carga Masiva y Cruce CSV
-            </button>
-            <button onclick="cambiarPestana('tab-omitidos')" id="nav-omitidos" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                ⚠️ Clientes sin Mail
-            </button>
-            <button onclick="cambiarPestana('tab-historial')" id="nav-historial" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                📋 Historial PostgreSQL
-            </button>
-            <button onclick="cambiarPestana('tab-calendario')" id="nav-calendario" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                📅 Calendario General
-            </button>
-            <button onclick="cambiarPestana('tab-metricas')" id="nav-metricas" class="px-5 py-3 text-sm text-slate-600 hover:text-slate-900 flex items-center gap-2 whitespace-nowrap">
-                📊 Panel de Métricas / KPIs
-            </button>
-        </nav>
-
-        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
-        <div id="tab-masivo" class="space-y-6">
-            <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="p-4 bg-slate-50 border rounded-lg">
-                        <label class="block text-xs font-bold text-slate-800 mb-1">1. Reporte de Deudas General (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded font-bold">OBLIGATORIO</span></label>
-                        <input type="file" id="csv-deudas" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white cursor-pointer">
-                    </div>
-                    <div class="p-4 bg-slate-50 border rounded-lg">
-                        <label class="block text-xs font-bold text-slate-800 mb-1">2. Base Clientes (.CSV) <span class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded font-bold">OBLIGATORIO</span></label>
-                        <input type="file" id="csv-clientes" accept=".csv" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white cursor-pointer">
-                    </div>
-                </div>
-
-                <div class="mt-6 flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                    <button onclick="procesarArchivosCSV(true)" class="flex-1 bg-rose-800 hover:bg-rose-900 text-white font-bold py-3 px-4 rounded-lg shadow text-xs">
-                        🚀 ENVIAR A TODOS (ENVIAR MASIVO)
-                    </button>
-                    <button onclick="procesarArchivosCSV(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg shadow text-xs">
-                        📋 SELECCIONAR CLIENTES MANUALMENTE
-                    </button>
-                </div>
-            </section>
-
-            <!-- Tabla de Pre-Vista y Cruce -->
-            <section id="seccion-tabla-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <div class="flex justify-between items-center border-b pb-3 mb-4">
-                    <h3 class="text-sm font-bold text-slate-900">Vista Previa del Cruce de Deudas y Contactos</h3>
-                    <input type="text" id="filtro-cruce" onkeyup="filtrarTablaCruce()" placeholder="🔍 Buscar cliente, CUIT o Mail..." class="border rounded p-1.5 text-xs w-64">
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs text-slate-600">
-                        <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
-                            <tr>
-                                <th class="p-2.5"><input type="checkbox" id="chk-marcar-todos" onchange="toggleMarcarTodos(this)"></th>
-                                <th class="p-2.5">Cliente</th>
-                                <th class="p-2.5">CUIT</th>
-                                <th class="p-2.5">Monto Deuda</th>
-                                <th class="p-2.5">Correo Registrado</th>
-                                <th class="p-2.5">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-cruce-cuerpo"></tbody>
-                    </table>
-                </div>
-
-                <div class="mt-4 flex justify-end">
-                    <button id="btn-enviar-smtp" onclick="dispararEnvioSMTPBackend()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-lg shadow text-xs flex items-center gap-2">
-                        🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO
-                    </button>
-                </div>
-            </section>
-        </div>
-
-        <!-- 2. OMITIDOS -->
-        <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-            <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-slate-600">
-                    <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
-                        <tr>
-                            <th class="p-2.5">Cliente</th>
-                            <th class="p-2.5">CUIT</th>
-                            <th class="p-2.5">Deuda Total</th>
-                            <th class="p-2.5">Teléfono</th>
-                            <th class="p-2.5">Enviar WhatsApp</th>
-                            <th class="p-2.5">Gestionar WPP</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-omitidos-cuerpo">
-                        <tr><td colspan="6" class="p-4 text-center text-slate-400">Procesa primero tus archivos CSV.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 3. HISTORIAL POSTGRESQL -->
-        <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-            <div class="flex justify-between items-center border-b pb-4 mb-4">
-                <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
-                <button onclick="cargarHistorial()" class="text-xs bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded font-semibold">🔄 Actualizar</button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-slate-600">
-                    <thead class="bg-slate-100 uppercase text-slate-700 border-b font-semibold">
-                        <tr>
-                            <th class="p-3">Fecha</th>
-                            <th class="p-3">Sucursal</th>
-                            <th class="p-3">Cliente</th>
-                            <th class="p-3">Canal</th>
-                            <th class="p-3">Estado</th>
-                            <th class="p-3">Promesa</th>
-                            <th class="p-3">Notas</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-historial"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 4. CALENDARIO GENERAL -->
-        <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-            <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-2">Seleccionar Fecha para Consultar:</label>
-                    <input type="date" id="filtro-fecha-cal" onchange="filtrarCalendario()" class="border rounded p-2 text-sm w-full">
-                </div>
-                <div class="bg-slate-50 p-4 rounded-lg border">
-                    <h3 class="text-xs font-bold text-slate-800 mb-2" id="titulo-cal-dia">Eventos Agendados</h3>
-                    <ul id="lista-eventos-cal" class="text-xs space-y-2 text-slate-600">
-                        <li class="text-slate-400 italic">Selecciona una fecha.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. MÉTRICAS -->
-        <div id="tab-metricas" class="hidden space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white p-5 rounded-lg border shadow-sm">
-                    <span class="text-xs font-bold text-slate-500 uppercase block mb-1">Mails Enviados</span>
-                    <span class="text-2xl font-black text-slate-900" id="kpi-mails">0</span>
-                </div>
-                <div class="bg-white p-5 rounded-lg border shadow-sm border-l-4 border-l-emerald-500">
-                    <span class="text-xs font-bold text-emerald-700 uppercase block mb-1">Gestiones WPP</span>
-                    <span class="text-2xl font-black text-emerald-600" id="kpi-wpp">0</span>
-                </div>
-                <div class="bg-white p-5 rounded-lg border shadow-sm border-l-4 border-l-amber-500">
-                    <span class="text-xs font-bold text-amber-700 uppercase block mb-1">Promesas Obtenidas</span>
-                    <span class="text-2xl font-black text-amber-600" id="kpi-promesas">0</span>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Modal Configuración -->
-    <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
-            <div class="space-y-4 text-xs">
-                <div>
-                    <label class="block font-semibold mb-1">Sucursal Autorizada:</label>
-                    <input type="text" id="cfg-sucursal" value="CASA CENTRAL" class="w-full border rounded p-2">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Correo Gmail Remitente:</label>
-                    <input type="email" id="cfg-email" placeholder="ejemplo@gmail.com" class="w-full border rounded p-2">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Contraseña de Aplicación Gmail (Token):</label>
-                    <input type="password" id="cfg-pass" class="w-full border rounded p-2">
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="cerrarConfiguracion()" class="px-3 py-1.5 text-xs bg-slate-200 rounded">Cancelar</button>
-                <button onclick="guardarConfiguracion()" class="px-3 py-1.5 text-xs bg-rose-800 text-white rounded font-bold">Guardar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Gestión WPP -->
-    <div id="modal-gestion-wpp" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4" id="wpp-modal-titulo">Registrar Gestión WPP</h3>
-            <div class="space-y-4 text-xs">
-                <div>
-                    <label class="block font-semibold mb-1">Estado de Gestión:</label>
-                    <select id="wpp-estado" class="w-full border rounded p-2">
-                        <option value="⏳ PROMESA DE PAGO WPP">⏳ PROMESA DE PAGO WPP</option>
-                        <option value="📲 RESPONDIDO POR WPP">📲 RESPONDIDO POR WPP</option>
-                        <option value="💰 PAGO INFORMADO WPP">💰 PAGO INFORMADO WPP</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Fecha Promesa de Pago:</label>
-                    <input type="date" id="wpp-fecha-promesa" class="w-full border rounded p-2">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Observaciones / Notas:</label>
-                    <textarea id="wpp-notas" rows="3" class="w-full border rounded p-2"></textarea>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="cerrarModalWPP()" class="px-3 py-1.5 text-xs bg-slate-200 rounded">Cancelar</button>
-                <button onclick="guardarGestionWPPModal()" class="px-3 py-1.5 text-xs bg-rose-800 text-white rounded font-bold">Guardar Gestión</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let globalClientesCruceMap = {};
-        let globalHistorialData = [];
-        let clienteSeleccionadoWPP = '';
-
-        function cambiarPestana(idTab) {
-            ['tab-masivo', 'tab-omitidos', 'tab-historial', 'tab-calendario', 'tab-metricas'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
-            ['nav-masivo', 'nav-omitidos', 'nav-historial', 'nav-calendario', 'nav-metricas'].forEach(id => {
-                document.getElementById(id).classList.remove('active-tab');
-            });
-
-            document.getElementById(idTab).classList.remove('hidden');
-            document.getElementById('nav-' + idTab.replace('tab-', '')).classList.add('active-tab');
-        }
-
-        function abrirConfiguracion() { document.getElementById('modal-config').classList.remove('hidden'); }
-        function cerrarConfiguracion() { document.getElementById('modal-config').classList.add('hidden'); }
-        
-        function guardarConfiguracion() {
-            const suc = document.getElementById('cfg-sucursal').value;
-            const mail = document.getElementById('cfg-email').value;
-            const pass = document.getElementById('cfg-pass').value;
-
-            if (!mail || !pass) {
-                alert('⚠️ Por favor completa el correo y la contraseña de aplicación.');
-                return;
-            }
-
-            localStorage.setItem('cfg_sucursal', suc);
-            localStorage.setItem('cfg_email', mail);
-            localStorage.setItem('cfg_pass', pass);
-            
-            document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${suc.toUpperCase()} | Remitente: ${mail}`;
-            cerrarConfiguracion();
-            alert('✅ Configuración guardada.');
-        }
-
-        async function procesarArchivosCSV(marcarTodos) {
-            const fileDeudas = document.getElementById('csv-deudas').files[0];
-            const fileClientes = document.getElementById('csv-clientes').files[0];
-
-            if (!fileDeudas || !fileClientes) {
-                alert('⚠️ Por favor sube ambos archivos CSV.');
-                return;
-            }
-
-            const txtDeudas = await fileDeudas.text();
-            const txtClientes = await fileClientes.text();
-
-            const baseClientes = parsearCSVClientesFlex(txtClientes);
-            globalClientesCruceMap = parsearCSVDeudas(txtDeudas, baseClientes);
-
-            renderizarTablaCruce(marcarTodos);
-            renderizarTablaOmitidos();
-        }
-
-        function parsearCSVClientesFlex(texto) {
-            const lineas = texto.split(/\r?\n/);
-            const mapa = {};
-
-            for (let i = 1; i < lineas.length; i++) {
-                if (!lineas[i].trim()) continue;
-                const col = lineas[i].split(/;|,/);
-
-                if (col.length > 0) {
-                    const camposLimpios = col.map(c => c.replace(/"/g, '').trim());
-                    let clienteKey = camposLimpios[0] ? camposLimpios[0].toUpperCase() : '';
-                    if (!clienteKey && camposLimpios[2]) clienteKey = camposLimpios[2].toUpperCase();
-                    if (!clienteKey && camposLimpios[3]) clienteKey = camposLimpios[3].toUpperCase();
-
-                    if (!clienteKey) continue;
-
-                    let emailEncontrado = '';
-                    for (let c = 0; c < camposLimpios.length; c++) {
-                        if (camposLimpios[c].includes('@') && camposLimpios[c].includes('.')) {
-                            emailEncontrado = camposLimpios[c].toLowerCase();
-                            break;
-                        }
-                    }
-
-                    let cuitVal = '—';
-                    for (let c = 0; c < camposLimpios.length; c++) {
-                        if (camposLimpios[c].match(/^\d{2}-?\d{8}-?\d{1}$/)) {
-                            cuitVal = camposLimpios[c];
-                            break;
-                        }
-                    }
-
-                    let telVal = '';
-                    for (let c = 0; c < camposLimpios.length; c++) {
-                        if (camposLimpios[c].match(/^[0-9+ ]{8,15}$/) && camposLimpios[c] !== cuitVal) {
-                            telVal = camposLimpios[c];
-                            break;
-                        }
-                    }
-
-                    mapa[clienteKey] = { cuit: cuitVal, email: emailEncontrado, tel: telVal };
-                }
-            }
-            return mapa;
-        }
-
-        function parsearCSVDeudas(texto, baseClientesMap) {
-            const lineas = texto.split(/\r?\n/);
-            const res = {};
-
-            for (let i = 1; i < lineas.length; i++) {
-                if (!lineas[i].trim()) continue;
-                const col = lineas[i].split(/;|,/);
-
-                if (col.length >= 2) {
-                    const cliente = col[0].replace(/"/g, '').trim().toUpperCase();
-                    if (!cliente) continue;
-
-                    const comprobante = col[1] ? col[1].replace(/"/g, '').trim() : 'F-001';
-                    let montoRaw = col[col.length - 1].replace(/"/g, '').replace(/\$/g, '').trim();
-                    let monto = 0;
-
-                    if (montoRaw) {
-                        montoRaw = montoRaw.replace(/\./g, '').replace(',', '.');
-                        monto = parseFloat(montoRaw) || 0;
-                        if (monto > 1000000) monto = monto / 1000;
-                    }
-
-                    if (!res[cliente]) {
-                        let infoBase = baseClientesMap[cliente];
-                        if (!infoBase) {
-                            const matchKey = Object.keys(baseClientesMap).find(k => k.includes(cliente) || cliente.includes(k));
-                            if (matchKey) infoBase = baseClientesMap[matchKey];
-                        }
-                        if (!infoBase) infoBase = { cuit: '—', email: '', tel: '' };
-
-                        res[cliente] = {
-                            cliente, cuit: infoBase.cuit, email: infoBase.email, tel: infoBase.tel,
-                            facturas: [], deudaTotal: 0
-                        };
-                    }
-                    res[cliente].facturas.push({ comprobante: comprobante, monto: monto });
-                    res[cliente].deudaTotal += monto;
-                }
-            }
-            return res;
-        }
-
-        function renderizarTablaCruce(marcarTodos) {
-            const tbody = document.getElementById('tabla-cruce-cuerpo');
-            tbody.innerHTML = '';
-            const lista = Object.values(globalClientesCruceMap);
-
-            lista.forEach((item) => {
-                const tieneEmail = item.email && item.email.length > 0;
-                const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
-                
-                tr.setAttribute('data-json', JSON.stringify(item));
-
-                tr.innerHTML = `
-                    <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold">${item.cliente}</td>
-                    <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
-                    <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.map(f => f.comprobante).join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            document.getElementById('seccion-tabla-cruce').classList.remove('hidden');
-        }
-
-        function toggleMarcarTodos(chkMain) {
-            document.querySelectorAll('.chk-cliente:not(:disabled)').forEach(chk => {
-                chk.checked = chkMain.checked;
-            });
-        }
-
-        function renderizarTablaOmitidos() {
-            const tbody = document.getElementById('tabla-omitidos-cuerpo');
-            tbody.innerHTML = '';
-            const omitidos = Object.values(globalClientesCruceMap).filter(c => !c.email);
-
-            if (omitidos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Todos los clientes poseen correo electrónico.</td></tr>`;
-                return;
-            }
-
-            omitidos.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50';
-                tr.innerHTML = `
-                    <td class="p-2.5 font-bold">${item.cliente}</td>
-                    <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5">${item.tel || '—'}</td>
-                    <td class="p-2.5"><button onclick="enviarWhatsAppOmitido('${item.cliente}', '${item.tel}', ${item.deudaTotal})" class="bg-emerald-600 text-white px-2 py-1 rounded font-bold text-[10px]">📲 WhatsApp</button></td>
-                    <td class="p-2.5"><button onclick="abrirModalWPP('${item.cliente}')" class="bg-slate-800 text-white px-2 py-1 rounded text-[10px]">📝 Gestionar</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function enviarWhatsAppOmitido(cliente, tel, monto) {
-            const num = tel ? tel.replace(/[^0-9]/g, '') : '';
-            if (!num) { alert(`❌ El cliente ${cliente} no posee teléfono registrado.`); return; }
-            const msj = `*CAMPO Y ASOCIADOS*\nEstimado *${cliente}*:\nLe informamos que registra un saldo pendiente de *$${monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}*.\nAlias Transferencia: *HOJOBAR.PROV.BSAS*`;
-            window.open(`https://wa.me/${num}?text=${encodeURIComponent(msj)}`, '_blank');
-        }
-
-        function abrirModalWPP(cliente) {
-            clienteSeleccionadoWPP = cliente;
-            document.getElementById('wpp-modal-titulo').innerText = `Registrar Gestión WPP — ${cliente}`;
-            document.getElementById('modal-gestion-wpp').classList.remove('hidden');
-        }
-        function cerrarModalWPP() { document.getElementById('modal-gestion-wpp').classList.add('hidden'); }
-
-        async function guardarGestionWPPModal() {
-            const estado = document.getElementById('wpp-estado').value;
-            const fechaProm = document.getElementById('wpp-fecha-promesa').value;
-            const notas = document.getElementById('wpp-notas').value;
-            const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
-
-            await fetch(`/api/gestiones`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sucursal: suc, cliente_nombre: clienteSeleccionadoWPP, canal: 'WhatsApp',
-                    estado_gestion: estado, fecha_promesa_pago: fechaProm, notas_observaciones: notas
-                })
-            });
-
-            cerrarModalWPP();
-            alert('✅ Gestión de WhatsApp guardada correctamente.');
-            cargarHistorial();
-        }
-
-        // ENVÍO DE CORREOS INSTANTÁNEO AL NAVEGADOR
-        async function dispararEnvioSMTPBackend() {
-            const mail = localStorage.getItem('cfg_email');
-            const pass = localStorage.getItem('cfg_pass');
-            const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
-
-            if (!mail || !pass) {
-                alert('⚠️ Faltan credenciales. Abre Configuración (⚙️) e ingresa tu correo y token de Gmail.');
-                abrirConfiguracion();
-                return;
-            }
-
-            const seleccionados = [];
-            const filasTabla = document.querySelectorAll('#tabla-cruce-cuerpo tr.fila-cliente-cruce');
-
-            filasTabla.forEach(row => {
-                const chk = row.querySelector('.chk-cliente');
-                if (chk && chk.checked) {
-                    const rawJson = row.getAttribute('data-json');
-                    if (rawJson) {
-                        try {
-                            const clienteObj = JSON.parse(rawJson);
-                            if (clienteObj && clienteObj.email) {
-                                seleccionados.push(clienteObj);
-                            }
-                        } catch (e) {}
-                    }
-                }
-            });
-
-            if (seleccionados.length === 0) {
-                alert('⚠️ Por favor tilda al menos un cliente con correo registrado.');
-                return;
-            }
-
-            const btnEnvio = document.getElementById('btn-enviar-smtp');
-            btnEnvio.disabled = true;
-            btnEnvio.innerText = '⚡ Procesando envío...';
-
-            try {
-                const res = await fetch(`/api/enviar-emails-masivos`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        configSMTP: { user: mail, pass: pass },
-                        listaClientes: seleccionados,
-                        sucursal: suc
-                    })
-                });
-
-                const data = await res.json();
-                
-                if (data.exito) {
-                    alert(`🚀 ¡Instrucción recibida! Se despacharán ${data.enviados} correo(s) a Gmail en segundo plano.`);
-                    setTimeout(cargarHistorial, 3000);
-                } else {
-                    alert('❌ Error reportado por el servidor: ' + data.error);
-                }
-            } catch (err) {
-                alert('⚠️ Error en la respuesta: ' + err.message);
-            } finally {
-                btnEnvio.disabled = false;
-                btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
-            }
-        }
-
-        async function cargarHistorial() {
-            const tbody = document.getElementById('tabla-historial');
-            try {
-                const res = await fetch(`/api/historial`);
-                if (!res.ok) return;
-                const datos = await res.json();
-                globalHistorialData = datos;
-
-                tbody.innerHTML = datos.map(item => `
-                    <tr class="border-b">
-                        <td class="p-3">${new Date(item.fecha_registro).toLocaleString('es-AR')}</td>
-                        <td class="p-3 font-semibold">${item.sucursal || 'CASA CENTRAL'}</td>
-                        <td class="p-3">${item.cliente_nombre || 'Cliente ID ' + item.cliente_id}</td>
-                        <td class="p-3">${item.canal || 'Email'}</td>
-                        <td class="p-3 font-semibold ${item.estado_gestion === 'Cobrado' ? 'text-green-600' : 'text-blue-600'}">${item.estado_gestion}</td>
-                        <td class="p-3">${item.fecha_promesa_pago ? new Date(item.fecha_promesa_pago).toLocaleDateString('es-AR') : '-'}</td>
-                        <td class="p-3 text-slate-500">${item.notas_observaciones || '-'}</td>
-                    </tr>
-                `).join('');
-
-                actualizarContadorAlertas();
-                actualizarMetricas();
-            } catch (err) {}
-        }
-
-        function actualizarContadorAlertas() {
-            const hoy = new Date().toISOString().split('T')[0];
-            const vencidas = globalHistorialData.filter(d => d.fecha_promesa_pago && d.fecha_promesa_pago <= hoy && d.estado_gestion !== 'Cobrado');
-            document.getElementById('badge-notificaciones').innerText = vencidas.length;
-        }
-
-        function mostrarPopUpNotificaciones() {
-            const hoy = new Date().toISOString().split('T')[0];
-            const vencidas = globalHistorialData.filter(d => d.fecha_promesa_pago && d.fecha_promesa_pago <= hoy && d.estado_gestion !== 'Cobrado');
-            if (vencidas.length === 0) alert('✅ No hay promesas de pago vencidas pendientes.');
-            else alert(`🚨 ATENCIÓN: Tienes ${vencidas.length} promesas de pago vencidas o por vencer hoy.`);
-        }
-
-        function actualizarMetricas() {
-            const mails = globalHistorialData.filter(d => d.canal === 'Email').length;
-            const wpp = globalHistorialData.filter(d => d.canal === 'WhatsApp').length;
-            const promesas = globalHistorialData.filter(d => d.fecha_promesa_pago).length;
-
-            document.getElementById('kpi-mails').innerText = mails;
-            document.getElementById('kpi-wpp').innerText = wpp;
-            document.getElementById('kpi-promesas').innerText = promesas;
-        }
-
-        const savedMail = localStorage.getItem('cfg_email');
-        const savedSuc = localStorage.getItem('cfg_sucursal');
-        if (savedMail) document.getElementById('cfg-email').value = savedMail;
-        if (savedSuc) {
-            document.getElementById('cfg-sucursal').value = savedSuc;
-            document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${savedSuc.toUpperCase()} | Remitente: ${savedMail}`;
-        }
-
-        cargarHistorial();
-    </script>
-</body>
-</html>
+const express = require('express');
+const path = require('path');
+const { Pool } = require('pg');
+const cors = require('cors');
+const nodemailer = require('nodemailer');
+
+const app = express();
+app.use(cors({ origin: '*' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Servir la interfaz web desde la raíz
+app.use(express.static(__dirname));
+
+// Configuración de la base de datos PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
+async function initDB() {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historial_gestiones_y_eventos (
+        id SERIAL PRIMARY KEY,
+        sucursal VARCHAR(100) DEFAULT 'CASA CENTRAL',
+        sucursal_id INT DEFAULT 1,
+        cliente_id INT DEFAULT 1,
+        cliente_nombre VARCHAR(255),
+        cuit VARCHAR(50),
+        canal VARCHAR(50),
+        estado_gestion VARCHAR(100),
+        fecha_promesa_pago DATE,
+        notas_observaciones TEXT,
+        monto_deuda NUMERIC(14, 2) DEFAULT 0.0,
+        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS historial_envios_email (
+        id SERIAL PRIMARY KEY,
+        cliente_nombre VARCHAR(255),
+        email_destino VARCHAR(255),
+        estado_envio VARCHAR(50),
+        fecha_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS gestion_whatsapp (
+        cliente_key VARCHAR(255) PRIMARY KEY,
+        estado VARCHAR(100),
+        fecha_promesa VARCHAR(50),
+        notas TEXT,
+        ruta_comprobante TEXT,
+        fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✅ PostgreSQL verificado.');
+  } catch (err) {
+    console.log('⚠️ Aviso DB:', err.message);
+  }
+}
+
+// Generación de plantilla HTML idéntica a Java Swing
+function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
+  let totalDeuda = 0.0;
+  const filas = (facturas || []).map(f => {
+    const montoNum = parseFloat(f.monto) || 0.0;
+    totalDeuda += montoNum;
+    return `
+      <tr style='border-bottom: 1px solid #e2e8f0;'>
+        <td style='padding: 10px;'>${f.cliente || cliente}</td>
+        <td style='padding: 10px;'>${f.empresa || '—'}</td>
+        <td style='padding: 10px;'>${f.comprobante || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.fechaComp || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.fechaVenc || '—'}</td>
+        <td style='padding: 10px; text-align: center;'>${f.moneda || 'ARS'}</td>
+        <td style='padding: 10px; text-align: right; font-weight: bold;'>$${montoNum.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+      </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'></head>
+  <body style='margin: 0; padding: 0; background-color: #f4f6f8; font-family: Arial, sans-serif; color: #141414;'>
+  <div style='background-color: #f4f6f8; width: 100%; padding: 30px 0;'>
+  <table role='presentation' width='800' align='center' style='max-width: 800px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;'>
+  <tr><td style='background-color: #ffffff; padding: 25px 35px 20px 35px; border-bottom: 4px solid #b80032;'>
+  <h2 style='color: #b80032; margin: 0; font-size: 22px;'>CAMPO & ASOCIADOS</h2>
+  </td></tr>
+  <tr><td style='padding: 25px 35px 10px 35px; text-align: center;'>
+  <h1 style='margin: 0; font-size: 19px; font-weight: 800; color: #141414; text-transform: uppercase;'>ESTADO DE CUENTA Y COMPOSICIÓN DE SALDOS</h1>
+  <p style='margin: 4px 0 0 0; font-size: 12px; color: #b80032; font-weight: bold;'>Notificación Automática Periódica — ${(sucursal || 'CASA CENTRAL').toUpperCase()}</p>
+  </td></tr>
+  <tr><td style='padding: 20px 35px 30px 35px;'>
+  <div style='background-color: #f8fafc; border-left: 4px solid #b80032; padding: 12px 16px; margin-bottom: 25px; font-size: 13px; color: #334155;'>
+  ℹ️ <strong>Aviso del sistema:</strong> Este es un correo automático enviado periódicamente por el sistema para mantenerlo informado sobre el estado actualizado de su cuenta.
+  </div>
+  <p style='margin-top: 0; font-size: 14px; color: #141414;'><strong>Estimado cliente ${cliente}:</strong></p>
+  ${cuit ? `<p style='margin-top: -8px; font-size: 13px; color: #475569;'><strong>CUIT:</strong> ${cuit}</p>` : ''}
+  <p style='font-size: 14px; line-height: 1.6; color: #334155;'>Por medio de la presente le recordamos los siguientes puntos a tener en cuenta para la correcta liquidación y cancelación de sus respectivas facturas pendientes:</p>
+  
+  <div style='font-size: 14px; font-weight: 700; color: #141414; margin: 25px 0 12px 0; padding-bottom: 6px; border-bottom: 2px solid #b80032; text-transform: uppercase;'>Composición de Saldos Pendientes</div>
+  <table style='width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;'>
+  <thead><tr style='background-color: #141414; color: #ffffff;'>
+  <th style='padding: 10px; text-align: left;'>Cliente</th>
+  <th style='padding: 10px; text-align: left;'>Empresa</th>
+  <th style='padding: 10px; text-align: left;'>Comprobante</th>
+  <th style='padding: 10px; text-align: center;'>Fecha Comp.</th>
+  <th style='padding: 10px; text-align: center;'>Fecha Vto.</th>
+  <th style='padding: 10px; text-align: center;'>Moneda</th>
+  <th style='padding: 10px; text-align: right;'>Importe Ppal</th>
+  </tr></thead>
+  <tbody>${filas}</tbody>
+  <tfoot><tr style='background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #b80032;'>
+  <td colspan='6' style='padding: 12px; text-align: right; color: #141414;'>TOTAL DEUDA PENDIENTE</td>
+  <td style='padding: 12px; text-align: right; color: #b80032; font-size: 14px;'>$${totalDeuda.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+  </tr></tfoot></table>
+
+  <div style='background-color: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-top: 25px;'>
+  <div style='margin-bottom: 14px; font-size: 13.5px;'><strong>1. Cheques Electrónicos (Echeqs):</strong> En caso de abonar con cheques electrónicos, por favor enviar previamente detalle de CUIT emisor, monto y fecha de cobro al correo <a href='mailto:${emailRemitente}' style='color:#b80032; font-weight: bold;'>${emailRemitente}</a>.</div>
+  <div style='margin-bottom: 10px; font-size: 13.5px;'><strong>2. Transferencias Bancarias:</strong> Se detallan las CBUs habilitadas para transferencia:</div>
+  <table style='width: 100%; border-collapse: collapse; font-size: 12.5px;'>
+  <thead><tr style='background-color: #141414; color: #ffffff;'><th>Banco</th><th>Sucursal</th><th>Cta Cte en $</th><th>CBU</th><th>Alias</th></tr></thead>
+  <tbody>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Provincia</td><td style='padding: 6px; text-align: center;'>4004</td><td style='padding: 6px; text-align: center;'>18797/8</td><td style='padding: 6px; text-align: center;'>0140004501400401879785</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.PROV.BSAS</td></tr>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Nación</td><td style='padding: 6px; text-align: center;'>San Cristóbal</td><td style='padding: 6px; text-align: center;'>65600157568</td><td style='padding: 6px; text-align: center;'>0110656120065600157682</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.NACION</td></tr>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Galicia</td><td style='padding: 6px; text-align: center;'>San Cristóbal</td><td style='padding: 6px; text-align: center;'>13509/8 002/7</td><td style='padding: 6px; text-align: center;'>0070002320000013509877</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.GALICIA</td></tr>
+  <tr style='border-bottom: 1px solid #e2e8f0;'><td style='padding: 6px; text-align: center;'>Macro</td><td style='padding: 6px; text-align: center;'>San Cristóbal</td><td style='padding: 6px; text-align: center;'>330209424970971</td><td style='padding: 6px; text-align: center;'>2850302630094249709711</td><td style='padding: 6px; text-align: center; font-weight: bold;'>HOJOBAR.MACRO</td></tr>
+  </tbody></table>
+  <div style='margin-top: 15px; font-size: 13.5px;'><strong>3. Informe de Pago:</strong> Todo pago realizado debe ser informado indefectiblemente a <a href='mailto:${emailRemitente}' style='color:#b80032; font-weight: bold;'>${emailRemitente}</a>.</div>
+  </div></td></tr>
+  <tr><td style='background-color: #f8fafc; padding: 18px; text-align: center; font-size: 11.5px; color: #94a3b8;'>
+  Mensaje generado y enviado periódicamente de forma automática por el sistema de gestión el ${new Date().toLocaleDateString('es-AR')}.
+  </td></tr></table></div></body></html>`;
+}
+
+// Endpoint de verificación SMTP en puerto seguro 465
+app.post('/api/test-smtp', async (req, res) => {
+  const { mail, pass } = req.body;
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: mail, pass: pass },
+      connectionTimeout: 5000
+    });
+    await transporter.verify();
+    return res.json({ exito: true });
+  } catch (err) {
+    return res.status(400).json({ exito: false, error: err.message });
+  }
+});
+
+// ENVÍO DIRECTO Y EN TIEMPO REAL
+app.post('/api/enviar-emails-masivos', async (req, res) => {
+  const { configSMTP, listaClientes, sucursal } = req.body;
+  if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
+    return res.status(400).json({ exito: false, error: 'Credenciales incompletas.' });
+  }
+
+  const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
+
+  if (clientesValidos.length === 0) {
+    return res.status(400).json({ exito: false, error: 'No se encontraron clientes con correo electrónico válido.' });
+  }
+
+  // Transporte seguro por SSL (Puerto 465 directo)
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: configSMTP.user, pass: configSMTP.pass },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000
+  });
+
+  let enviados = 0;
+  let errores = [];
+
+  for (const item of clientesValidos) {
+    const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
+
+    try {
+      await transporter.sendMail({
+        from: `"Campo y Asociados — Cobranzas" <${configSMTP.user}>`,
+        to: item.email,
+        subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
+        html: htmlBody
+      });
+
+      enviados++;
+
+      if (process.env.DATABASE_URL) {
+        await pool.query(
+          'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
+          [item.cliente, item.email, 'ENVIADO']
+        ).catch(() => {});
+
+        await pool.query(
+          `INSERT INTO historial_gestiones_y_eventos 
+           (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
+        ).catch(() => {});
+      }
+    } catch (e) {
+      console.error("Error enviando correo a", item.cliente, e.message);
+      errores.push({ cliente: item.cliente, error: e.message });
+    }
+  }
+
+  return res.json({ exito: true, enviados: enviados, errores: errores });
+});
+
+app.get('/api/historial', async (req, res) => {
+  try {
+    if (!process.env.DATABASE_URL) return res.json([]);
+    const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
+    return res.json(resultado.rows);
+  } catch (err) {
+    return res.json([]);
+  }
+});
+
+app.post('/api/gestiones', async (req, res) => {
+  const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
+  try {
+    const promesa = fecha_promesa_pago || null;
+    if (process.env.DATABASE_URL) {
+      const resultado = await pool.query(
+        `INSERT INTO historial_gestiones_y_eventos 
+         (sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [sucursal || 'CASA CENTRAL', cliente_nombre, cuit || '—', canal, estado_gestion, promesa, notas_observaciones, monto_deuda || 0]
+      );
+
+      if (canal === 'WhatsApp') {
+        await pool.query(
+          `INSERT INTO gestion_whatsapp (cliente_key, estado, fecha_promesa, notas) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (cliente_key) DO UPDATE SET estado = $2, fecha_promesa = $3, notas = $4`,
+          [cliente_nombre.toUpperCase(), estado_gestion, promesa || '—', notas_observaciones]
+        );
+      }
+      return res.status(201).json({ exito: true, gestion: resultado.rows[0] });
+    }
+    return res.status(201).json({ exito: true });
+  } catch (err) {
+    return res.status(500).json({ exito: false, error: err.message });
+  }
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor listo escuchando en puerto ${PORT}`);
+  initDB();
+});
