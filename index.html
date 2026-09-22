@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- Lógica JavaScript Unificada -->
+    <!-- Lógica JavaScript -->
     <script>
         const API_URL = '';
         
@@ -403,8 +403,11 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
                 
-                // Guardamos directamente los datos procesados en la fila
-                tr.setAttribute('data-json', JSON.stringify(item));
+                // Mapeo seguro directo
+                tr.setAttribute('data-cliente', item.cliente);
+                tr.setAttribute('data-cuit', item.cuit);
+                tr.setAttribute('data-deuda', item.deudaTotal);
+                tr.setAttribute('data-email', item.email || '');
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
@@ -485,7 +488,7 @@
             cargarHistorial();
         }
 
-        // LECTURA DIRECTA DE ATRIBUTOS EN TIEMPO REAL (MÁXIMA EFECTIVIDAD)
+        // ENVÍO DE CORREOS ULTRARRÁPIDO Y DIRECTO
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -503,26 +506,34 @@
             filasTabla.forEach(row => {
                 const chk = row.querySelector('.chk-cliente');
                 if (chk && chk.checked) {
-                    const rawJson = row.getAttribute('data-json');
-                    if (rawJson) {
-                        try {
-                            const clienteObj = JSON.parse(rawJson);
-                            if (clienteObj && clienteObj.email) {
-                                seleccionados.push(clienteObj);
-                            }
-                        } catch (e) {}
+                    const clienteNombre = row.getAttribute('data-cliente');
+                    const itemOriginal = globalClientesCruceMap[clienteNombre];
+
+                    if (itemOriginal && itemOriginal.email) {
+                        seleccionados.push(itemOriginal);
+                    } else {
+                        const emailRow = row.getAttribute('data-email');
+                        if (emailRow && emailRow.includes('@')) {
+                            seleccionados.push({
+                                cliente: clienteNombre,
+                                cuit: row.getAttribute('data-cuit'),
+                                email: emailRow,
+                                deudaTotal: parseFloat(row.getAttribute('data-deuda')) || 0,
+                                facturas: [{ comprobante: 'Resumen Saldo', monto: parseFloat(row.getAttribute('data-deuda')) || 0 }]
+                            });
+                        }
                     }
                 }
             });
 
             if (seleccionados.length === 0) {
-                alert('⚠️ Por favor tilda al menos un cliente con correo válido de la lista.');
+                alert('⚠️ Por favor tilda al menos un cliente con correo registrado.');
                 return;
             }
 
             const btnEnvio = document.getElementById('btn-enviar-smtp');
             btnEnvio.disabled = true;
-            btnEnvio.innerText = '⏳ Procesando envío de correos...';
+            btnEnvio.innerText = '⚡ Procesando envío masivo...';
 
             try {
                 const res = await fetch(`/api/enviar-emails-masivos`, {
@@ -538,7 +549,7 @@
                 const data = await res.json();
                 
                 if (data.exito) {
-                    alert(`✅ ¡Envíos finalizados! Se despacharon ${data.enviados} correos con éxito.`);
+                    alert(`✅ ¡Envíos completados al instante! Se despacharon ${data.enviados} correo(s) con éxito.`);
                     cargarHistorial();
                 } else {
                     alert('❌ Error reportado por el servidor: ' + data.error);
