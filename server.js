@@ -11,7 +11,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(express.static(__dirname));
 
-// Inicialización de Resend usando Variable de Entorno segura
+// Inicialización de Resend usando la Variable de Entorno segura
 const resendApiKey = process.env.RESEND_API_KEY || '';
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
 
@@ -68,13 +68,19 @@ app.post('/api/prueba-envio-directo', async (req, res) => {
       <p><strong>CUIT:</strong> ${cliente.cuit || '—'}</p>
       <p><strong>Deuda Informada:</strong> $${(parseFloat(cliente.monto) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</p>
       <hr>
-      <p style="font-size: 12px; color: #64748b;">Prueba enviada exitosamente vía API Web HTTP el ${new Date().toLocaleString('es-AR')}.</p>
+      <p style="font-size: 12px; color: #64748b;">Prueba enviada exitosamente el ${new Date().toLocaleString('es-AR')}.</p>
     </div>
   `;
 
   try {
+    // Si tu dominio ya está verificado en Resend, usa remitenteUser (ej: gbarraza@campoyasociados.com.ar).
+    // Si aún no terminaste de verificar los registros DNS, Resend usará temporalmente el correo de prueba.
+    const senderAddress = remitenteUser.endsWith('@campoyasociados.com.ar') 
+      ? `Campo & Asociados <${remitenteUser}>` 
+      : 'Campo & Asociados <onboarding@resend.dev>';
+
     const data = await resendClient.emails.send({
-      from: 'Campo & Asociados <onboarding@resend.dev>',
+      from: senderAddress,
       to: [cliente.email],
       subject: `[PRUEBA SISTEMA] Estado de Cuenta — ${cliente.nombre}`,
       html: cuerpoHTML
