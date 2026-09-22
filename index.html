@@ -29,7 +29,6 @@
         </div>
     </header>
 
-    <!-- Pestañas Principales -->
     <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
 
         <nav class="flex border-b border-slate-200 bg-white rounded-t-lg shadow-sm overflow-x-auto mb-6">
@@ -50,7 +49,7 @@
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
+        <!-- 1. PESTAÑA: CARGA MASIVA -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
@@ -76,7 +75,6 @@
                 </div>
             </section>
 
-            <!-- Tabla de Pre-Vista y Cruce -->
             <section id="seccion-tabla-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h3 class="text-sm font-bold text-slate-900">Vista Previa del Cruce de Deudas y Contactos</h3>
@@ -107,7 +105,7 @@
             </section>
         </div>
 
-        <!-- 2. PESTAÑA: OMITIDOS (CLIENTES SIN MAIL) -->
+        <!-- 2. OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -123,13 +121,13 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-omitidos-cuerpo">
-                        <tr><td colspan="6" class="p-4 text-center text-slate-400">Procesa primero tus archivos CSV para cargar la lista de omitidos.</td></tr>
+                        <tr><td colspan="6" class="p-4 text-center text-slate-400">Procesa primero tus archivos CSV.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- 3. PESTAÑA: HISTORIAL POSTGRESQL -->
+        <!-- 3. HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -153,7 +151,7 @@
             </div>
         </div>
 
-        <!-- 4. PESTAÑA: CALENDARIO DE PROMESAS -->
+        <!-- 4. CALENDARIO GENERAL -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -170,7 +168,7 @@
             </div>
         </div>
 
-        <!-- 5. PESTAÑA: MÉTRICAS Y KPIS -->
+        <!-- 5. MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -215,7 +213,7 @@
         </div>
     </div>
 
-    <!-- Modal Registrar Gestión WPP -->
+    <!-- Modal Gestión WPP -->
     <div id="modal-gestion-wpp" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4" id="wpp-modal-titulo">Registrar Gestión WPP</h3>
@@ -244,10 +242,7 @@
         </div>
     </div>
 
-    <!-- Lógica JavaScript de Envío Inmediato -->
     <script>
-        const API_URL = '';
-        
         let globalClientesCruceMap = {};
         let globalHistorialData = [];
         let clienteSeleccionadoWPP = '';
@@ -484,7 +479,7 @@
             cargarHistorial();
         }
 
-        // ENVÍO ULTRA RÁPIDO RESPUESTA EN MENOS DE 1 SEGUNDO
+        // ENVÍO DE CORREOS CON RESPUESTA INMEDIATA AL USUARIO
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -537,13 +532,13 @@
                 const data = await res.json();
                 
                 if (data.exito) {
-                    alert(`🚀 ¡Instrucción enviada! Se despacharán ${data.enviados} correo(s) en segundo plano.`);
-                    setTimeout(cargarHistorial, 2000);
+                    alert(`🚀 ¡Instrucción recibida! Se despacharán ${data.enviados} correo(s) a Gmail en segundo plano.`);
+                    setTimeout(cargarHistorial, 3000);
                 } else {
                     alert('❌ Error reportado por el servidor: ' + data.error);
                 }
             } catch (err) {
-                alert('⚠️ Estado: ' + err.message);
+                alert('⚠️ Error en la respuesta: ' + err.message);
             } finally {
                 btnEnvio.disabled = false;
                 btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
