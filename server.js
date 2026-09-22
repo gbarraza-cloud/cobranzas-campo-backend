@@ -9,7 +9,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir la interfaz visual estática
+// Servir el Frontend estático
 app.use(express.static(__dirname));
 
 // Configuración PostgreSQL
@@ -131,13 +131,16 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Test SMTP
+// Test SMTP usando Puerto 465 (SSL Directo sin congelamiento)
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com', port: 587, secure: false,
-      auth: { user: mail, pass: pass }
+      host: 'smtp.gmail.com', 
+      port: 465, 
+      secure: true,
+      auth: { user: mail, pass: pass },
+      connectionTimeout: 8000
     });
     await transporter.verify();
     return res.json({ exito: true });
@@ -146,7 +149,7 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// Endpoint: Enviar Correos Asíncrono e Inmediato
+// Endpoint: Enviar Correos Masivos con Respuesta Inmediata
 app.post('/api/enviar-emails-masivos', (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
@@ -155,18 +158,23 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
 
   const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
 
-  // Responder a la pantalla en MENOS DE 1 SEGUNDO
-  res.json({ exito: true, enviados: clientesValidos.length, mensaje: "Procesando en segundo plano." });
+  // RESPUESTA INMEDIATA EN 0.1 SEGUNDOS AL NAVEGADOR
+  res.json({ 
+    exito: true, 
+    enviados: clientesValidos.length, 
+    mensaje: "Instrucción recibida. Procesando envíos..." 
+  });
 
-  // Procesamiento asíncrono e independiente en el servidor
+  // Procesamiento Asíncrono desacoplado
   setImmediate(async () => {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
+      port: 465,
+      secure: true, // SSL directo
       auth: { user: configSMTP.user, pass: configSMTP.pass },
-      pool: true,
-      maxConnections: 5
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
     });
 
     for (const item of clientesValidos) {
@@ -179,6 +187,8 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
           subject: `Estado de Cuenta y Composición de Saldos — ${item.cliente}`,
           html: htmlBody
         });
+
+        console.log(`✅ Mail enviado a: ${item.cliente} (${item.email})`);
 
         if (process.env.DATABASE_URL) {
           pool.query(
@@ -194,7 +204,7 @@ app.post('/api/enviar-emails-masivos', (req, res) => {
           ).catch(() => {});
         }
       } catch (err) {
-        console.error(`❌ Error enviando a ${item.cliente}:`, err.message);
+        console.error(`❌ Error al enviar a ${item.cliente}:`, err.message);
       }
     }
   });
@@ -211,7 +221,7 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
-// Endpoint: Gestiones
+// Endpoint: Gestiones Individuales
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
@@ -246,6 +256,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor único activo en puerto ${PORT}`);
+  console.log(`🚀 Servidor único activo escuchando en puerto ${PORT}`);
   initDB();
 });
