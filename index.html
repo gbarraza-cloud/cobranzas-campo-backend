@@ -49,7 +49,7 @@
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA: CARGA MASIVA -->
+        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
@@ -75,6 +75,7 @@
                 </div>
             </section>
 
+            <!-- Tabla de Pre-Vista y Cruce -->
             <section id="seccion-tabla-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h3 class="text-sm font-bold text-slate-900">Vista Previa del Cruce de Deudas y Contactos</h3>
@@ -479,7 +480,7 @@
             cargarHistorial();
         }
 
-        // ENVÍO DE CORREOS CON RESPUESTA INMEDIATA AL USUARIO
+        // ENVÍO DE CORREOS INSTANTÁNEO AL NAVEGADOR
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
