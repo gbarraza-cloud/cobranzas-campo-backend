@@ -17,12 +17,8 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Inicialización de la tabla para auditoría centralizada de Casa Central
 async function initDB() {
-  if (!process.env.DATABASE_URL) {
-    console.log('⚠️ Sin DATABASE_URL configurada.');
-    return;
-  }
+  if (!process.env.DATABASE_URL) return;
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS auditoria_sucursales (
@@ -38,33 +34,34 @@ async function initDB() {
         detalle_error TEXT
       );
     `);
-    console.log('✅ Base de Datos PostgreSQL lista para registrar actividad de sucursales.');
+    console.log('✅ Base de Datos PostgreSQL lista.');
   } catch (err) {
-    console.error('❌ Error inicializando DB:', err.message);
+    console.error('❌ Error DB:', err.message);
   }
 }
 
-// -----------------------------------------------------------------------------
-// PRUEBA 1: Endpoint de Envío Individual Directo con Feedback Inmediato
-// -----------------------------------------------------------------------------
+// PRUEBA 1: Envío Directo por Puerto Seguro 465 (SSL)
 app.post('/api/prueba-envio-directo', async (req, res) => {
   const { configSMTP, sucursal, cliente } = req.body;
 
-  if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
+  // Limpieza de espacios en el token de aplicación de Gmail
+  const passLimpia = (configSMTP?.pass || '').replace(/\s+/g, '');
+  const userLimpio = (configSMTP?.user || '').trim();
+
+  if (!userLimpio || !passLimpia) {
     return res.status(400).json({ exito: false, error: 'Faltan credenciales SMTP (usuario o token).' });
   }
 
   if (!cliente || !cliente.email || !cliente.email.includes('@')) {
-    return res.status(400).json({ exito: false, error: 'Dirección de correo de destino no válida.' });
+    return res.status(400).json({ exito: false, error: 'Correo de destino no válido.' });
   }
 
-  // Creación del transporte con timeout estricto de 10 segundos
+  // Puerto 465 directo con SSL (Bypassea bloqueos de puerto 587 en Render)
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    auth: { user: configSMTP.user, pass: configSMTP.pass },
+    port: 465,
+    secure: true,
+    auth: { user: userLimpio, pass: passLimpia },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000
@@ -78,46 +75,38 @@ app.post('/api/prueba-envio-directo', async (req, res) => {
       <p><strong>CUIT:</strong> ${cliente.cuit || '—'}</p>
       <p><strong>Deuda Informada:</strong> $${(parseFloat(cliente.monto) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</p>
       <hr>
-      <p style="font-size: 12px; color: #64748b;">Prueba de conexión directa y centralización de auditoría realizada el ${new Date().toLocaleString('es-AR')}.</p>
+      <p style="font-size: 12px; color: #64748b;">Prueba enviada exitosamente vía SSL (Puerto 465) el ${new Date().toLocaleString('es-AR')}.</p>
     </div>
   `;
 
   try {
-    // 1. Verificamos credenciales SMTP primero
     await transporter.verify();
 
-    // 2. Enviamos el mail
     const info = await transporter.sendMail({
-      from: `"Campo & Asociados (${sucursal || 'Casa Central'})" <${configSMTP.user}>`,
+      from: `"Campo & Asociados (${sucursal || 'Casa Central'})" <${userLimpio}>`,
       to: cliente.email,
       subject: `[PRUEBA SISTEMA] Estado de Cuenta — ${cliente.nombre}`,
       html: cuerpoHTML
     });
 
-    console.log(`✅ Mail enviado con éxito a ${cliente.email} desde ${sucursal}`);
-
-    // 3. Guardamos en PostgreSQL para que Casa Central lo pueda ver (PRUEBA 2)
     if (process.env.DATABASE_URL) {
       await pool.query(
         `INSERT INTO auditoria_sucursales 
          (sucursal, usuario_remitente, cliente_nombre, cuit, email_destino, monto_deuda, estado_envio)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [sucursal || 'CASA CENTRAL', configSMTP.user, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'ENVIADO']
+        [sucursal || 'CASA CENTRAL', userLimpio, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'ENVIADO']
       );
     }
 
     return res.json({ exito: true, messageId: info.messageId });
 
   } catch (error) {
-    console.error(`❌ Error en prueba de envío desde ${sucursal}:`, error.message);
-
-    // Registramos la falla en la DB para auditoría de Casa Central
     if (process.env.DATABASE_URL) {
       await pool.query(
         `INSERT INTO auditoria_sucursales 
          (sucursal, usuario_remitente, cliente_nombre, cuit, email_destino, monto_deuda, estado_envio, detalle_error)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [sucursal || 'CASA CENTRAL', configSMTP.user, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'FALLIDO', error.message]
+        [sucursal || 'CASA CENTRAL', userLimpio, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'FALLIDO', error.message]
       ).catch(() => {});
     }
 
@@ -125,13 +114,11 @@ app.post('/api/prueba-envio-directo', async (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------------------
-// PRUEBA 2: Endpoint para que Casa Central vea todo el historial unificado
-// -----------------------------------------------------------------------------
+// PRUEBA 2: Auditoría para Casa Central
 app.get('/api/auditoria-central', async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) {
-      return res.json({ exito: true, registros: [], mensaje: 'Sin conexión a base de datos.' });
+      return res.json({ exito: true, registros: [], mensaje: 'Sin DB' });
     }
     const result = await pool.query('SELECT * FROM auditoria_sucursales ORDER BY fecha_registro DESC LIMIT 100');
     return res.json({ exito: true, registros: result.rows });
@@ -146,6 +133,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor de Pruebas iniciado en puerto ${PORT}`);
+  console.log(`🚀 Servidor listo escuchando en puerto ${PORT}`);
   initDB();
 });
