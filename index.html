@@ -412,7 +412,6 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
                 
-                // DATA ATTRIBUTES EN LA FILA HTML
                 tr.setAttribute('data-cliente', item.cliente);
                 tr.setAttribute('data-cuit', item.cuit);
                 tr.setAttribute('data-email', item.email || '');
@@ -508,7 +507,6 @@
             });
         }
 
-        // LECTURA DIRECTA DE DATOS DESDE ATRIBUTOS HTML NATIVOS
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -579,7 +577,7 @@
                     alert(`✅ ¡Envíos completados! Se entregaron ${data.enviados} correo(s) exitosamente.`);
                     cargarHistorial();
                 } else {
-                    alert('❌ Error reportado por el servidor: ' + data.error);
+                    alert('❌ Error reportado por el servidor:\n\n' + data.error);
                 }
             } catch (err) {
                 alert('⚠️ Estado de conexión: ' + err.message);
