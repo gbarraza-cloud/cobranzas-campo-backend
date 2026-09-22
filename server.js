@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 app.use(cors({ origin: '*' }));
@@ -10,6 +10,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(express.static(__dirname));
+
+// Inicialización de Resend usando Variable de Entorno segura
+const resendApiKey = process.env.RESEND_API_KEY || '';
+const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
 
 // Configuración de PostgreSQL
 const pool = new Pool({
@@ -40,32 +44,21 @@ async function initDB() {
   }
 }
 
-// PRUEBA 1: Envío Directo por Puerto Seguro 465 (SSL)
+// PRUEBA 1: Envío Directo vía API HTTP de Resend
 app.post('/api/prueba-envio-directo', async (req, res) => {
-  const { configSMTP, sucursal, cliente } = req.body;
+  const { sucursal, cliente, configSMTP } = req.body;
+  const remitenteUser = (configSMTP && configSMTP.user) ? configSMTP.user : 'gbarraza@campoyasociados.com.ar';
 
-  // Limpieza de espacios en el token de aplicación de Gmail
-  const passLimpia = (configSMTP?.pass || '').replace(/\s+/g, '');
-  const userLimpio = (configSMTP?.user || '').trim();
-
-  if (!userLimpio || !passLimpia) {
-    return res.status(400).json({ exito: false, error: 'Faltan credenciales SMTP (usuario o token).' });
+  if (!resendClient) {
+    return res.status(500).json({ 
+      exito: false, 
+      error: 'Falta configurar RESEND_API_KEY en las variables de entorno de Render.' 
+    });
   }
 
   if (!cliente || !cliente.email || !cliente.email.includes('@')) {
     return res.status(400).json({ exito: false, error: 'Correo de destino no válido.' });
   }
-
-  // Puerto 465 directo con SSL (Bypassea bloqueos de puerto 587 en Render)
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user: userLimpio, pass: passLimpia },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-  });
 
   const cuerpoHTML = `
     <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
@@ -75,38 +68,44 @@ app.post('/api/prueba-envio-directo', async (req, res) => {
       <p><strong>CUIT:</strong> ${cliente.cuit || '—'}</p>
       <p><strong>Deuda Informada:</strong> $${(parseFloat(cliente.monto) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</p>
       <hr>
-      <p style="font-size: 12px; color: #64748b;">Prueba enviada exitosamente vía SSL (Puerto 465) el ${new Date().toLocaleString('es-AR')}.</p>
+      <p style="font-size: 12px; color: #64748b;">Prueba enviada exitosamente vía API Web HTTP el ${new Date().toLocaleString('es-AR')}.</p>
     </div>
   `;
 
   try {
-    await transporter.verify();
-
-    const info = await transporter.sendMail({
-      from: `"Campo & Asociados (${sucursal || 'Casa Central'})" <${userLimpio}>`,
-      to: cliente.email,
+    const data = await resendClient.emails.send({
+      from: 'Campo & Asociados <onboarding@resend.dev>',
+      to: [cliente.email],
       subject: `[PRUEBA SISTEMA] Estado de Cuenta — ${cliente.nombre}`,
       html: cuerpoHTML
     });
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    console.log(`✅ Mail enviado con éxito a ${cliente.email} desde ${sucursal}`);
 
     if (process.env.DATABASE_URL) {
       await pool.query(
         `INSERT INTO auditoria_sucursales 
          (sucursal, usuario_remitente, cliente_nombre, cuit, email_destino, monto_deuda, estado_envio)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [sucursal || 'CASA CENTRAL', userLimpio, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'ENVIADO']
+        [sucursal || 'CASA CENTRAL', remitenteUser, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'ENVIADO']
       );
     }
 
-    return res.json({ exito: true, messageId: info.messageId });
+    return res.json({ exito: true, messageId: data.id });
 
   } catch (error) {
+    console.error(`❌ Error enviando correo desde ${sucursal}:`, error.message);
+
     if (process.env.DATABASE_URL) {
       await pool.query(
         `INSERT INTO auditoria_sucursales 
          (sucursal, usuario_remitente, cliente_nombre, cuit, email_destino, monto_deuda, estado_envio, detalle_error)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [sucursal || 'CASA CENTRAL', userLimpio, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'FALLIDO', error.message]
+        [sucursal || 'CASA CENTRAL', remitenteUser, cliente.nombre, cliente.cuit || '—', cliente.email, parseFloat(cliente.monto) || 0, 'FALLIDO', error.message]
       ).catch(() => {});
     }
 
