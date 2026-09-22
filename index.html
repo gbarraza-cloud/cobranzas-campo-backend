@@ -106,7 +106,7 @@
             </section>
         </div>
 
-        <!-- OMITIDOS -->
+        <!-- 2. OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -128,7 +128,7 @@
             </div>
         </div>
 
-        <!-- HISTORIAL POSTGRESQL -->
+        <!-- 3. HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -152,7 +152,7 @@
             </div>
         </div>
 
-        <!-- CALENDARIO -->
+        <!-- 4. CALENDARIO -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,7 +169,7 @@
             </div>
         </div>
 
-        <!-- MÉTRICAS -->
+        <!-- 5. MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -397,20 +397,14 @@
             lista.forEach((item) => {
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
-                
-                // Guardamos los datos nativos en la fila
-                tr.setAttribute('data-cliente', item.cliente);
-                tr.setAttribute('data-cuit', item.cuit);
-                tr.setAttribute('data-email', item.email || '');
-                tr.setAttribute('data-deuda', item.deudaTotal || 0);
+                tr.className = 'border-b hover:bg-slate-50';
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold celda-cli-nombre">${item.cliente}</td>
-                    <td class="p-2.5 celda-cli-cuit">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700 celda-cli-monto">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5 celda-cli-email">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5 font-bold">${item.cliente}</td>
+                    <td class="p-2.5">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
                     <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.map(f => f.comprobante).join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -498,7 +492,7 @@
             });
         }
 
-        // LECTURA DIRECTA A PRUEBA DE FALLOS DE CADA FILA
+        // EXTRACCIÓN GARANTIZADA DE CELDAS DEL DOM
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -511,26 +505,26 @@
             }
 
             const seleccionados = [];
-            // Leemos TODAS las filas de la tabla sin importar si están filtradas
-            const filasTabla = document.querySelectorAll('#tabla-cruce-cuerpo tr');
+            const tbody = document.getElementById('tabla-cruce-cuerpo');
+            const filas = tbody ? tbody.rows : [];
 
-            filasTabla.forEach(row => {
-                const chk = row.querySelector('input[type="checkbox"].chk-cliente');
+            for (let i = 0; i < filas.length; i++) {
+                const fila = filas[i];
+                const chk = fila.cells[0]?.querySelector('input[type="checkbox"]');
+
                 if (chk && chk.checked) {
-                    // Leemos de los data-attributes o del texto directo de las celdas
-                    const nomCli = row.getAttribute('data-cliente') || row.querySelector('.celda-cli-nombre')?.innerText.trim() || '';
-                    const cuitCli = row.getAttribute('data-cuit') || row.querySelector('.celda-cli-cuit')?.innerText.trim() || '—';
-                    const emailCli = row.getAttribute('data-email') || row.querySelector('.celda-cli-email')?.innerText.trim() || '';
-                    const montoCli = parseFloat(row.getAttribute('data-deuda')) || 0;
+                    const nomCli = fila.cells[1]?.innerText.trim() || '';
+                    const cuitCli = fila.cells[2]?.innerText.trim() || '—';
+                    const emailCli = fila.cells[4]?.innerText.trim() || '';
 
                     if (emailCli && emailCli.includes('@')) {
-                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: montoCli }];
+                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: 0 }];
 
-                        // Buscamos si existe la lista de facturas en el objeto global
-                        for (let key in globalClientesCruceMap) {
-                            if (key.toUpperCase().trim() === nomCli.toUpperCase().trim()) {
-                                if (globalClientesCruceMap[key].facturas && globalClientesCruceMap[key].facturas.length > 0) {
-                                    facturasCli = globalClientesCruceMap[key].facturas;
+                        // Coincidencia segura con el mapa global
+                        for (let k in globalClientesCruceMap) {
+                            if (k.toUpperCase().trim() === nomCli.toUpperCase().trim()) {
+                                if (globalClientesCruceMap[k].facturas && globalClientesCruceMap[k].facturas.length > 0) {
+                                    facturasCli = globalClientesCruceMap[k].facturas;
                                     break;
                                 }
                             }
@@ -540,12 +534,12 @@
                             cliente: nomCli,
                             cuit: cuitCli,
                             email: emailCli,
-                            deudaTotal: montoCli,
+                            deudaTotal: 0,
                             facturas: facturasCli
                         });
                     }
                 }
-            });
+            }
 
             if (seleccionados.length === 0) {
                 alert('⚠️ Por favor tilda al menos un cliente con correo electrónico válido.');
