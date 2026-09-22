@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- Lógica JavaScript Unificada y Ultra Rápida -->
+    <!-- Lógica JavaScript de Envío Inmediato -->
     <script>
         const API_URL = '';
         
@@ -484,7 +484,7 @@
             cargarHistorial();
         }
 
-        // ENVÍO INSTANTÁNEO EN MENOS DE 2 SECONDS
+        // ENVÍO ULTRA RÁPIDO RESPUESTA EN MENOS DE 1 SEGUNDO
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -521,7 +521,7 @@
 
             const btnEnvio = document.getElementById('btn-enviar-smtp');
             btnEnvio.disabled = true;
-            btnEnvio.innerText = '⚡ Procesando envío instantáneo...';
+            btnEnvio.innerText = '⚡ Procesando envío...';
 
             try {
                 const res = await fetch(`/api/enviar-emails-masivos`, {
@@ -537,8 +537,8 @@
                 const data = await res.json();
                 
                 if (data.exito) {
-                    alert(`🚀 ¡Instrucción enviada con éxito! Se procesaron ${data.enviados} cliente(s) en segundo plano.`);
-                    setTimeout(cargarHistorial, 3000);
+                    alert(`🚀 ¡Instrucción enviada! Se despacharán ${data.enviados} correo(s) en segundo plano.`);
+                    setTimeout(cargarHistorial, 2000);
                 } else {
                     alert('❌ Error reportado por el servidor: ' + data.error);
                 }
