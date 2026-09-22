@@ -52,7 +52,7 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Base de datos PostgreSQL inicializada correctamente.');
+    console.log('✅ PostgreSQL inicializado correctamente.');
   } catch (err) {
     console.log('⚠️ Aviso DB:', err.message);
   }
@@ -129,6 +129,26 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
+// Test SMTP
+app.post('/api/test-smtp', async (req, res) => {
+  const { mail, pass } = req.body;
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: { user: mail, pass: pass },
+      connectionTimeout: 8000
+    });
+    await transporter.verify();
+    return res.json({ exito: true });
+  } catch (err) {
+    return res.status(400).json({ exito: false, error: err.message });
+  }
+});
+
+// Endpoint Enviar Emails Masivos con Reporte Explicito de Errores
 app.post('/api/enviar-emails-masivos', async (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
 
@@ -139,16 +159,31 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
   const clientesValidos = (listaClientes || []).filter(item => item && item.email && item.email.includes('@'));
 
   if (clientesValidos.length === 0) {
-    return res.json({ exito: true, enviados: 0, mensaje: 'No se encontraron destinatarios válidos.' });
+    return res.json({ exito: false, error: 'No se recibieron clientes con correo válido en el servidor.' });
   }
 
+  // Transporte SMTP resiliente compatible con Render
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false,
+    requireTLS: true,
     auth: { user: configSMTP.user, pass: configSMTP.pass },
-    connectionTimeout: 10000
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000
   });
+
+  // Verificar conexión primero
+  try {
+    await transporter.verify();
+  } catch (verifyErr) {
+    console.error("❌ Error de autenticación SMTP en Gmail:", verifyErr.message);
+    return res.status(400).json({
+      exito: false,
+      error: `Error de autenticación con Gmail (${configSMTP.user}): ${verifyErr.message}. Verifique la contraseña de aplicación.`
+    });
+  }
 
   let enviados = 0;
   let errores = [];
@@ -180,9 +215,16 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
         ).catch(() => {});
       }
     } catch (e) {
-      console.error("Error enviando correo a", item.cliente, e.message);
+      console.error(`❌ Error enviando a ${item.cliente}:`, e.message);
       errores.push({ cliente: item.cliente, error: e.message });
     }
+  }
+
+  if (enviados === 0 && errores.length > 0) {
+    return res.status(500).json({
+      exito: false,
+      error: `No se pudo entregar ningún correo. Primer error: ${errores[0].error}`
+    });
   }
 
   return res.json({ exito: true, enviados, errores });
@@ -232,6 +274,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
+  console.log(`🚀 Servidor listo escuchando en puerto ${PORT}`);
   initDB();
 });
