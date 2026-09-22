@@ -246,7 +246,6 @@
 
     <!-- Lógica JavaScript Unificada -->
     <script>
-        // RUTA RELATIVA DIRECTA (MISMA IP, MISMO SERVIDOR)
         const API_URL = '';
         
         let globalClientesCruceMap = {};
@@ -399,14 +398,13 @@
             tbody.innerHTML = '';
             const lista = Object.values(globalClientesCruceMap);
 
-            lista.forEach((item, idx) => {
+            lista.forEach((item) => {
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50';
-                tr.setAttribute('data-cliente', item.cliente);
-                tr.setAttribute('data-cuit', item.cuit);
-                tr.setAttribute('data-deuda', item.deudaTotal);
-                tr.setAttribute('data-email', item.email || '');
+                tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
+                
+                // Guardamos directamente los datos procesados en la fila
+                tr.setAttribute('data-json', JSON.stringify(item));
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
@@ -487,7 +485,7 @@
             cargarHistorial();
         }
 
-        // ENVÍO RÁPIDO CON RUTA DIRECTA AL SERVIDOR MONOLÍTICO
+        // LECTURA DIRECTA DE ATRIBUTOS EN TIEMPO REAL (MÁXIMA EFECTIVIDAD)
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -500,30 +498,25 @@
             }
 
             const seleccionados = [];
-            const filasTildadas = document.querySelectorAll('#tabla-cruce-cuerpo tr');
+            const filasTabla = document.querySelectorAll('#tabla-cruce-cuerpo tr.fila-cliente-cruce');
 
-            filasTildadas.forEach(row => {
+            filasTabla.forEach(row => {
                 const chk = row.querySelector('.chk-cliente');
                 if (chk && chk.checked) {
-                    const clienteNombre = row.getAttribute('data-cliente');
-                    const itemOriginal = globalClientesCruceMap[clienteNombre];
-
-                    if (itemOriginal) {
-                        seleccionados.push(itemOriginal);
-                    } else {
-                        seleccionados.push({
-                            cliente: clienteNombre,
-                            cuit: row.getAttribute('data-cuit'),
-                            email: row.getAttribute('data-email'),
-                            deudaTotal: parseFloat(row.getAttribute('data-deuda')) || 0,
-                            facturas: ['Resumen de Saldo']
-                        });
+                    const rawJson = row.getAttribute('data-json');
+                    if (rawJson) {
+                        try {
+                            const clienteObj = JSON.parse(rawJson);
+                            if (clienteObj && clienteObj.email) {
+                                seleccionados.push(clienteObj);
+                            }
+                        } catch (e) {}
                     }
                 }
             });
 
             if (seleccionados.length === 0) {
-                alert('⚠️ Por favor tilda al menos un cliente de la lista para enviar.');
+                alert('⚠️ Por favor tilda al menos un cliente con correo válido de la lista.');
                 return;
             }
 
