@@ -106,7 +106,7 @@
             </section>
         </div>
 
-        <!-- 2. OMITIDOS -->
+        <!-- OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -128,7 +128,7 @@
             </div>
         </div>
 
-        <!-- 3. HISTORIAL POSTGRESQL -->
+        <!-- HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -152,7 +152,7 @@
             </div>
         </div>
 
-        <!-- 4. CALENDARIO -->
+        <!-- CALENDARIO -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,7 +169,7 @@
             </div>
         </div>
 
-        <!-- 5. MÉTRICAS -->
+        <!-- MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -189,7 +189,7 @@
 
     </main>
 
-    <!-- Modal Configuración -->
+    <!-- Modal Configuración VISIBLE -->
     <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
@@ -204,7 +204,10 @@
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">Contraseña de Aplicación Gmail (Token):</label>
-                    <input type="password" id="cfg-pass" class="w-full border rounded p-2">
+                    <div class="flex gap-2">
+                        <input type="text" id="cfg-pass" placeholder="xxxx xxxx xxxx xxxx" class="w-full border rounded p-2 font-mono bg-slate-50">
+                        <button type="button" onclick="toggleVerToken()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 rounded font-bold text-[11px] whitespace-nowrap" id="btn-toggle-pass">👁️ Ocultar</button>
+                    </div>
                 </div>
             </div>
             <div class="mt-6 flex justify-end gap-2">
@@ -255,6 +258,18 @@
                 .replace(/[^A-Z0-9]/g, '');
         }
 
+        function toggleVerToken() {
+            const inputPass = document.getElementById('cfg-pass');
+            const btn = document.getElementById('btn-toggle-pass');
+            if (inputPass.type === 'password') {
+                inputPass.type = 'text';
+                btn.innerText = '👁️ Ocultar';
+            } else {
+                inputPass.type = 'password';
+                btn.innerText = '👁️ Ver';
+            }
+        }
+
         function cambiarPestana(idTab) {
             ['tab-masivo', 'tab-omitidos', 'tab-historial', 'tab-calendario', 'tab-metricas'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
@@ -267,13 +282,17 @@
             document.getElementById('nav-' + idTab.replace('tab-', '')).classList.add('active-tab');
         }
 
-        function abrirConfiguracion() { document.getElementById('modal-config').classList.remove('hidden'); }
+        function abrirConfiguracion() { 
+            const savedPass = localStorage.getItem('cfg_pass') || '';
+            document.getElementById('cfg-pass').value = savedPass;
+            document.getElementById('modal-config').classList.remove('hidden'); 
+        }
         function cerrarConfiguracion() { document.getElementById('modal-config').classList.add('hidden'); }
         
         function guardarConfiguracion() {
             const suc = document.getElementById('cfg-sucursal').value;
             const mail = document.getElementById('cfg-email').value;
-            const pass = document.getElementById('cfg-pass').value;
+            const pass = document.getElementById('cfg-pass').value.trim();
 
             if (!mail || !pass) {
                 alert('⚠️ Por favor completa el correo y la contraseña de aplicación.');
@@ -286,7 +305,7 @@
             
             document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${suc.toUpperCase()} | Remitente: ${mail}`;
             cerrarConfiguracion();
-            alert('✅ Configuración guardada.');
+            alert('✅ Configuración guardada correctamente.');
         }
 
         async function procesarArchivosCSV(marcarTodos) {
