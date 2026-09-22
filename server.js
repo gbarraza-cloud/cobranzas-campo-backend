@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { Pool } = require('pg');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
@@ -8,18 +9,17 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Configuración de la base de datos PostgreSQL
+// Servir la interfaz visual (index.html) desde el mismo backend
+app.use(express.static(path.join(__dirname)));
+
+// Configuración resiliente de PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Inicialización de la base de datos de fondo
 async function initDB() {
-  if (!process.env.DATABASE_URL) {
-    console.warn('⚠️ No se detectó la variable DATABASE_URL. Operando en modo memoria.');
-    return;
-  }
+  if (!process.env.DATABASE_URL) return;
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS historial_gestiones_y_eventos (
@@ -54,9 +54,9 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL conectado y tablas verificadas.');
+    console.log('✅ PostgreSQL inicializado.');
   } catch (err) {
-    console.error('⚠️ Aviso en conexión PostgreSQL (el servidor seguirá activo):', err.message);
+    console.log('⚠️ Aviso DB (El servidor seguirá funcionando normalmente):', err.message);
   }
 }
 
@@ -131,11 +131,6 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Ruta de diagnóstico simple
-app.get('/', (req, res) => {
-  res.json({ estado: 'Backend en vivo 🚀', timestamp: new Date() });
-});
-
 // Endpoint: Test SMTP
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
@@ -182,17 +177,17 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
       enviados++;
 
       if (process.env.DATABASE_URL) {
-        await pool.query(
+        pool.query(
           'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
           [item.cliente, item.email, 'ENVIADO']
-        ).catch(e => console.error('Error insertando log email:', e.message));
+        ).catch(() => {});
 
-        await pool.query(
+        pool.query(
           `INSERT INTO historial_gestiones_y_eventos 
            (sucursal, cliente_nombre, cuit, canal, estado_gestion, notas_observaciones, monto_deuda) 
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
-        ).catch(e => console.error('Error insertando gestión:', e.message));
+        ).catch(() => {});
       }
 
     } catch (err) {
@@ -210,11 +205,11 @@ app.get('/api/historial', async (req, res) => {
     const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
     res.json(resultado.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json([]);
   }
 });
 
-// Endpoint: Gestiones Individuales
+// Endpoint: Gestiones
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
@@ -243,9 +238,13 @@ app.post('/api/gestiones', async (req, res) => {
   }
 });
 
-// INICIO INMEDIATO DEL SERVIDOR
+// Ruta comodín para que sirva index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor backend escuchando inmediatamente en puerto ${PORT}`);
+  console.log(`🚀 Servidor backend escuchando en puerto ${PORT}`);
   initDB();
 });
