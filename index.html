@@ -11,6 +11,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
+    <!-- Header Corporativo -->
     <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
@@ -48,6 +49,7 @@
             </button>
         </nav>
 
+        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
@@ -73,6 +75,7 @@
                 </div>
             </section>
 
+            <!-- Tabla de Pre-Vista -->
             <section id="seccion-tabla-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h3 class="text-sm font-bold text-slate-900">Vista Previa del Cruce de Deudas y Contactos</h3>
@@ -103,6 +106,7 @@
             </section>
         </div>
 
+        <!-- 2. OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -124,6 +128,7 @@
             </div>
         </div>
 
+        <!-- 3. HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -147,6 +152,7 @@
             </div>
         </div>
 
+        <!-- 4. CALENDARIO -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -163,6 +169,7 @@
             </div>
         </div>
 
+        <!-- 5. MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -182,6 +189,7 @@
 
     </main>
 
+    <!-- Modal Configuración -->
     <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
@@ -206,6 +214,7 @@
         </div>
     </div>
 
+    <!-- Modal Gestión WPP -->
     <div id="modal-gestion-wpp" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4" id="wpp-modal-titulo">Registrar Gestión WPP</h3>
@@ -239,11 +248,11 @@
         let globalHistorialData = [];
         let clienteSeleccionadoWPP = '';
 
-        function normalizarTexto(txt) {
+        function normalizarCadena(txt) {
             if (!txt) return '';
             return txt.toString().toUpperCase().trim()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita acentos
-                .replace(/[^A-Z0-9]/g, ''); // Deja solo letras y números
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^A-Z0-9]/g, '');
         }
 
         function cambiarPestana(idTab) {
@@ -339,7 +348,7 @@
                         }
                     }
 
-                    const keyNormal = normalizarTexto(clienteNombre);
+                    const keyNormal = normalizarCadena(clienteNombre);
                     mapa[keyNormal] = { clienteNombre, cuit: cuitVal, email: emailEncontrado, tel: telVal };
                 }
             }
@@ -358,7 +367,7 @@
                     const clienteOriginal = col[0].replace(/"/g, '').trim().toUpperCase();
                     if (!clienteOriginal) continue;
 
-                    const keyNormal = normalizarTexto(clienteOriginal);
+                    const keyNormal = normalizarCadena(clienteOriginal);
                     const comprobante = col[1] ? col[1].replace(/"/g, '').trim() : 'F-001';
                     let montoRaw = col[col.length - 1].replace(/"/g, '').replace(/\$/g, '').trim();
                     let monto = 0;
@@ -403,6 +412,7 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
                 
+                // DATA ATTRIBUTES COMPLETO DE ALTA FIDELIDAD
                 tr.setAttribute('data-cliente', item.cliente);
                 tr.setAttribute('data-cuit', item.cuit);
                 tr.setAttribute('data-email', item.email || '');
@@ -498,6 +508,7 @@
             });
         }
 
+        // FUNCIÓN DE EXTRACCIÓN DIRECTA DESDE ATRIBUTOS HTML (100% EFECTIVA)
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -510,19 +521,17 @@
             }
 
             const seleccionados = [];
-            const tbody = document.getElementById('tabla-cruce-cuerpo');
-            const filas = tbody ? tbody.rows : [];
+            const filas = document.querySelectorAll('#tabla-cruce-cuerpo tr');
 
-            for (let i = 0; i < filas.length; i++) {
-                const fila = filas[i];
-                const chk = fila.cells[0]?.querySelector('input[type="checkbox"]');
+            filas.forEach(fila => {
+                const chk = fila.querySelector('input[type="checkbox"].chk-cliente');
 
                 if (chk && chk.checked) {
-                    const nomCli = fila.getAttribute('data-cliente') || fila.cells[1]?.innerText.trim() || '';
-                    const cuitCli = fila.getAttribute('data-cuit') || fila.cells[2]?.innerText.trim() || '—';
-                    const emailCli = fila.getAttribute('data-email') || fila.cells[4]?.innerText.trim() || '';
+                    const nomCli = fila.getAttribute('data-cliente') || '';
+                    const cuitCli = fila.getAttribute('data-cuit') || '—';
+                    const emailCli = fila.getAttribute('data-email') || '';
                     const deudaCli = parseFloat(fila.getAttribute('data-deuda')) || 0;
-                    
+
                     let facturasCli = [];
                     try {
                         facturasCli = JSON.parse(fila.getAttribute('data-facturas') || '[]');
@@ -542,7 +551,7 @@
                         });
                     }
                 }
-            }
+            });
 
             if (seleccionados.length === 0) {
                 alert('⚠️ Por favor tilda al menos un cliente con correo electrónico válido.');
