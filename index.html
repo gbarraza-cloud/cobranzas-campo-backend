@@ -106,7 +106,7 @@
             </section>
         </div>
 
-        <!-- 2. OMITIDOS -->
+        <!-- OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -128,7 +128,7 @@
             </div>
         </div>
 
-        <!-- 3. HISTORIAL POSTGRESQL -->
+        <!-- HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -152,7 +152,7 @@
             </div>
         </div>
 
-        <!-- 4. CALENDARIO -->
+        <!-- CALENDARIO -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,7 +169,7 @@
             </div>
         </div>
 
-        <!-- 5. MÉTRICAS -->
+        <!-- MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -397,14 +397,20 @@
             lista.forEach((item) => {
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50';
+                tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
+                
+                // Guardamos los datos nativos en la fila
+                tr.setAttribute('data-cliente', item.cliente);
+                tr.setAttribute('data-cuit', item.cuit);
+                tr.setAttribute('data-email', item.email || '');
+                tr.setAttribute('data-deuda', item.deudaTotal || 0);
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold">${item.cliente}</td>
-                    <td class="p-2.5">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5 font-bold celda-cli-nombre">${item.cliente}</td>
+                    <td class="p-2.5 celda-cli-cuit">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700 celda-cli-monto">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2.5 celda-cli-email">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
                     <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.map(f => f.comprobante).join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -478,7 +484,21 @@
             cargarHistorial();
         }
 
-        // EXTRAE LA INFORMACIÓN DIRECTA DE LAS CELDAS DE LA TABLA (MÁXIMA VELOCIDAD Y EXACTITUD)
+        function filtrarTablaCruce() {
+            const input = document.getElementById('filtro-cruce').value.toUpperCase();
+            const filas = document.querySelectorAll('#tabla-cruce-cuerpo tr');
+
+            filas.forEach(row => {
+                const textoFila = row.innerText.toUpperCase();
+                if (textoFila.includes(input)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // LECTURA DIRECTA A PRUEBA DE FALLOS DE CADA FILA
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -491,23 +511,28 @@
             }
 
             const seleccionados = [];
+            // Leemos TODAS las filas de la tabla sin importar si están filtradas
             const filasTabla = document.querySelectorAll('#tabla-cruce-cuerpo tr');
 
             filasTabla.forEach(row => {
-                const chk = row.cells[0]?.querySelector('input[type="checkbox"]');
+                const chk = row.querySelector('input[type="checkbox"].chk-cliente');
                 if (chk && chk.checked) {
-                    const nomCli = row.cells[1]?.innerText.trim() || '';
-                    const cuitCli = row.cells[2]?.innerText.trim() || '—';
-                    const emailCli = row.cells[4]?.innerText.trim() || '';
+                    // Leemos de los data-attributes o del texto directo de las celdas
+                    const nomCli = row.getAttribute('data-cliente') || row.querySelector('.celda-cli-nombre')?.innerText.trim() || '';
+                    const cuitCli = row.getAttribute('data-cuit') || row.querySelector('.celda-cli-cuit')?.innerText.trim() || '—';
+                    const emailCli = row.getAttribute('data-email') || row.querySelector('.celda-cli-email')?.innerText.trim() || '';
+                    const montoCli = parseFloat(row.getAttribute('data-deuda')) || 0;
 
                     if (emailCli && emailCli.includes('@')) {
-                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: 0 }];
-                        
-                        // Si existe en el mapa global traemos sus facturas
-                        for (let k in globalClientesCruceMap) {
-                            if (k.toUpperCase() === nomCli.toUpperCase()) {
-                                facturasCli = globalClientesCruceMap[k].facturas || facturasCli;
-                                break;
+                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: montoCli }];
+
+                        // Buscamos si existe la lista de facturas en el objeto global
+                        for (let key in globalClientesCruceMap) {
+                            if (key.toUpperCase().trim() === nomCli.toUpperCase().trim()) {
+                                if (globalClientesCruceMap[key].facturas && globalClientesCruceMap[key].facturas.length > 0) {
+                                    facturasCli = globalClientesCruceMap[key].facturas;
+                                    break;
+                                }
                             }
                         }
 
@@ -515,7 +540,7 @@
                             cliente: nomCli,
                             cuit: cuitCli,
                             email: emailCli,
-                            deudaTotal: 0,
+                            deudaTotal: montoCli,
                             facturas: facturasCli
                         });
                     }
