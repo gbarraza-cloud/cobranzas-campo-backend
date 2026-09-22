@@ -244,9 +244,9 @@
         </div>
     </div>
 
-    <!-- Lógica JavaScript -->
+    <!-- Lógica JavaScript Unificada -->
     <script>
-        // RUTA RELATIVA DINÁMICA
+        // RUTA RELATIVA DIRECTA (MISMA IP, MISMO SERVIDOR)
         const API_URL = '';
         
         let globalClientesCruceMap = {};
@@ -284,7 +284,7 @@
             
             document.getElementById('subtitulo-header').innerText = `MÓDULO DE COBRANZAS — ${suc.toUpperCase()} | Remitente: ${mail}`;
             cerrarConfiguracion();
-            alert('✅ Configuración guardada en el navegador.');
+            alert('✅ Configuración guardada.');
         }
 
         async function procesarArchivosCSV(marcarTodos) {
@@ -473,7 +473,7 @@
             const notas = document.getElementById('wpp-notas').value;
             const suc = localStorage.getItem('cfg_sucursal') || 'CASA CENTRAL';
 
-            await fetch(`${API_URL}/api/gestiones`, {
+            await fetch(`/api/gestiones`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -487,6 +487,7 @@
             cargarHistorial();
         }
 
+        // ENVÍO RÁPIDO CON RUTA DIRECTA AL SERVIDOR MONOLÍTICO
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -531,7 +532,7 @@
             btnEnvio.innerText = '⏳ Procesando envío de correos...';
 
             try {
-                const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
+                const res = await fetch(`/api/enviar-emails-masivos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -550,7 +551,7 @@
                     alert('❌ Error reportado por el servidor: ' + data.error);
                 }
             } catch (err) {
-                alert('⚠️ Estado del servidor: ' + err.message);
+                alert('⚠️ Error en la respuesta: ' + err.message);
             } finally {
                 btnEnvio.disabled = false;
                 btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
@@ -560,7 +561,7 @@
         async function cargarHistorial() {
             const tbody = document.getElementById('tabla-historial');
             try {
-                const res = await fetch(`${API_URL}/api/historial`);
+                const res = await fetch(`/api/historial`);
                 if (!res.ok) return;
                 const datos = await res.json();
                 globalHistorialData = datos;
