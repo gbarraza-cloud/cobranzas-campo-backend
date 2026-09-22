@@ -244,10 +244,10 @@
         </div>
     </div>
 
-    <!-- Lógica JavaScript de Envíos Seguros -->
+    <!-- Lógica JavaScript -->
     <script>
-        // URL OFICIAL Y ABSOLUTA DEL BACKEND NODE.JS
-        const API_URL = 'https://cobranzas-campo-backend.onrender.com';
+        // RUTA RELATIVA DINÁMICA
+        const API_URL = '';
         
         let globalClientesCruceMap = {};
         let globalHistorialData = [];
@@ -483,11 +483,10 @@
             });
 
             cerrarModalWPP();
-            alert('✅ Gestión de WhatsApp guardada correctamente en PostgreSQL.');
+            alert('✅ Gestión de WhatsApp guardada correctamente.');
             cargarHistorial();
         }
 
-        // ENVÍO SEGURIZADO QUE DETECTA Y MANEJA ERRORES HTML DE RENDER
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -529,7 +528,7 @@
 
             const btnEnvio = document.getElementById('btn-enviar-smtp');
             btnEnvio.disabled = true;
-            btnEnvio.innerText = '⏳ Conectando con servidor en la nube...';
+            btnEnvio.innerText = '⏳ Procesando envío de correos...';
 
             try {
                 const res = await fetch(`${API_URL}/api/enviar-emails-masivos`, {
@@ -542,23 +541,16 @@
                     })
                 });
 
-                // Si el servidor devuelve HTML (Error de servidor dormido/apagado en Render)
-                const textResponse = await res.text();
-                
-                if (textResponse.trim().startsWith('<')) {
-                    throw new Error("El Servidor Backend en Render está reactivándose o en mantenimiento. Aguarda 20 segundos e inténtalo de nuevo.");
-                }
-
-                const data = JSON.parse(textResponse);
+                const data = await res.json();
                 
                 if (data.exito) {
-                    alert(`✅ ¡Proceso finalizado! Se enviaron ${data.enviados} correos con éxito.`);
+                    alert(`✅ ¡Envíos finalizados! Se despacharon ${data.enviados} correos con éxito.`);
                     cargarHistorial();
                 } else {
                     alert('❌ Error reportado por el servidor: ' + data.error);
                 }
             } catch (err) {
-                alert('⚠️ Estado de conexión: ' + err.message);
+                alert('⚠️ Estado del servidor: ' + err.message);
             } finally {
                 btnEnvio.disabled = false;
                 btnEnvio.innerText = '🔒 CONFIRMAR Y ENVIAR NOTIFICACIONES POR CORREO';
