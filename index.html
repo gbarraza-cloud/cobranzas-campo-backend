@@ -11,7 +11,6 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header Corporativo -->
     <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
@@ -49,7 +48,6 @@
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
@@ -75,7 +73,6 @@
                 </div>
             </section>
 
-            <!-- Tabla de Pre-Vista -->
             <section id="seccion-tabla-cruce" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h3 class="text-sm font-bold text-slate-900">Vista Previa del Cruce de Deudas y Contactos</h3>
@@ -106,7 +103,6 @@
             </section>
         </div>
 
-        <!-- 2. OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -128,7 +124,6 @@
             </div>
         </div>
 
-        <!-- 3. HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -152,7 +147,6 @@
             </div>
         </div>
 
-        <!-- 4. CALENDARIO -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,7 +163,6 @@
             </div>
         </div>
 
-        <!-- 5. MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -189,7 +182,6 @@
 
     </main>
 
-    <!-- Modal Configuración -->
     <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4">⚙️ Configuración del Remitente y Sucursal</h3>
@@ -214,7 +206,6 @@
         </div>
     </div>
 
-    <!-- Modal Gestión WPP -->
     <div id="modal-gestion-wpp" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-base font-bold text-slate-900 border-b pb-2 mb-4" id="wpp-modal-titulo">Registrar Gestión WPP</h3>
@@ -247,6 +238,13 @@
         let globalClientesCruceMap = {};
         let globalHistorialData = [];
         let clienteSeleccionadoWPP = '';
+
+        function normalizarTexto(txt) {
+            if (!txt) return '';
+            return txt.toString().toUpperCase().trim()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita acentos
+                .replace(/[^A-Z0-9]/g, ''); // Deja solo letras y números
+        }
 
         function cambiarPestana(idTab) {
             ['tab-masivo', 'tab-omitidos', 'tab-historial', 'tab-calendario', 'tab-metricas'].forEach(id => {
@@ -311,11 +309,11 @@
 
                 if (col.length > 0) {
                     const camposLimpios = col.map(c => c.replace(/"/g, '').trim());
-                    let clienteKey = camposLimpios[0] ? camposLimpios[0].toUpperCase() : '';
-                    if (!clienteKey && camposLimpios[2]) clienteKey = camposLimpios[2].toUpperCase();
-                    if (!clienteKey && camposLimpios[3]) clienteKey = camposLimpios[3].toUpperCase();
+                    let clienteNombre = camposLimpios[0] ? camposLimpios[0].toUpperCase() : '';
+                    if (!clienteNombre && camposLimpios[2]) clienteNombre = camposLimpios[2].toUpperCase();
+                    if (!clienteNombre && camposLimpios[3]) clienteNombre = camposLimpios[3].toUpperCase();
 
-                    if (!clienteKey) continue;
+                    if (!clienteNombre) continue;
 
                     let emailEncontrado = '';
                     for (let c = 0; c < camposLimpios.length; c++) {
@@ -341,7 +339,8 @@
                         }
                     }
 
-                    mapa[clienteKey] = { cuit: cuitVal, email: emailEncontrado, tel: telVal };
+                    const keyNormal = normalizarTexto(clienteNombre);
+                    mapa[keyNormal] = { clienteNombre, cuit: cuitVal, email: emailEncontrado, tel: telVal };
                 }
             }
             return mapa;
@@ -356,9 +355,10 @@
                 const col = lineas[i].split(/;|,/);
 
                 if (col.length >= 2) {
-                    const cliente = col[0].replace(/"/g, '').trim().toUpperCase();
-                    if (!cliente) continue;
+                    const clienteOriginal = col[0].replace(/"/g, '').trim().toUpperCase();
+                    if (!clienteOriginal) continue;
 
+                    const keyNormal = normalizarTexto(clienteOriginal);
                     const comprobante = col[1] ? col[1].replace(/"/g, '').trim() : 'F-001';
                     let montoRaw = col[col.length - 1].replace(/"/g, '').replace(/\$/g, '').trim();
                     let monto = 0;
@@ -369,21 +369,25 @@
                         if (monto > 1000000) monto = monto / 1000;
                     }
 
-                    if (!res[cliente]) {
-                        let infoBase = baseClientesMap[cliente];
+                    if (!res[keyNormal]) {
+                        let infoBase = baseClientesMap[keyNormal];
                         if (!infoBase) {
-                            const matchKey = Object.keys(baseClientesMap).find(k => k.includes(cliente) || cliente.includes(k));
+                            const matchKey = Object.keys(baseClientesMap).find(k => k.includes(keyNormal) || keyNormal.includes(k));
                             if (matchKey) infoBase = baseClientesMap[matchKey];
                         }
                         if (!infoBase) infoBase = { cuit: '—', email: '', tel: '' };
 
-                        res[cliente] = {
-                            cliente, cuit: infoBase.cuit, email: infoBase.email, tel: infoBase.tel,
-                            facturas: [], deudaTotal: 0
+                        res[keyNormal] = {
+                            cliente: clienteOriginal,
+                            cuit: infoBase.cuit,
+                            email: infoBase.email,
+                            tel: infoBase.tel,
+                            facturas: [],
+                            deudaTotal: 0
                         };
                     }
-                    res[cliente].facturas.push({ comprobante: comprobante, monto: monto });
-                    res[cliente].deudaTotal += monto;
+                    res[keyNormal].facturas.push({ comprobante: comprobante, monto: monto });
+                    res[keyNormal].deudaTotal += monto;
                 }
             }
             return res;
@@ -397,7 +401,13 @@
             lista.forEach((item) => {
                 const tieneEmail = item.email && item.email.length > 0;
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50';
+                tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
+                
+                tr.setAttribute('data-cliente', item.cliente);
+                tr.setAttribute('data-cuit', item.cuit);
+                tr.setAttribute('data-email', item.email || '');
+                tr.setAttribute('data-deuda', item.deudaTotal || 0);
+                tr.setAttribute('data-facturas', JSON.stringify(item.facturas || []));
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
@@ -484,15 +494,10 @@
 
             filas.forEach(row => {
                 const textoFila = row.innerText.toUpperCase();
-                if (textoFila.includes(input)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+                row.style.display = textoFila.includes(input) ? '' : 'none';
             });
         }
 
-        // EXTRACCIÓN GARANTIZADA DE CELDAS DEL DOM
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -513,28 +518,26 @@
                 const chk = fila.cells[0]?.querySelector('input[type="checkbox"]');
 
                 if (chk && chk.checked) {
-                    const nomCli = fila.cells[1]?.innerText.trim() || '';
-                    const cuitCli = fila.cells[2]?.innerText.trim() || '—';
-                    const emailCli = fila.cells[4]?.innerText.trim() || '';
+                    const nomCli = fila.getAttribute('data-cliente') || fila.cells[1]?.innerText.trim() || '';
+                    const cuitCli = fila.getAttribute('data-cuit') || fila.cells[2]?.innerText.trim() || '—';
+                    const emailCli = fila.getAttribute('data-email') || fila.cells[4]?.innerText.trim() || '';
+                    const deudaCli = parseFloat(fila.getAttribute('data-deuda')) || 0;
+                    
+                    let facturasCli = [];
+                    try {
+                        facturasCli = JSON.parse(fila.getAttribute('data-facturas') || '[]');
+                    } catch (e) {}
+
+                    if (!facturasCli || facturasCli.length === 0) {
+                        facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: deudaCli }];
+                    }
 
                     if (emailCli && emailCli.includes('@')) {
-                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: 0 }];
-
-                        // Coincidencia segura con el mapa global
-                        for (let k in globalClientesCruceMap) {
-                            if (k.toUpperCase().trim() === nomCli.toUpperCase().trim()) {
-                                if (globalClientesCruceMap[k].facturas && globalClientesCruceMap[k].facturas.length > 0) {
-                                    facturasCli = globalClientesCruceMap[k].facturas;
-                                    break;
-                                }
-                            }
-                        }
-
                         seleccionados.push({
                             cliente: nomCli,
                             cuit: cuitCli,
                             email: emailCli,
-                            deudaTotal: 0,
+                            deudaTotal: deudaCli,
                             facturas: facturasCli
                         });
                     }
