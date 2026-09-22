@@ -412,7 +412,7 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 fila-cliente-cruce';
                 
-                // DATA ATTRIBUTES COMPLETO DE ALTA FIDELIDAD
+                // DATA ATTRIBUTES EN LA FILA HTML
                 tr.setAttribute('data-cliente', item.cliente);
                 tr.setAttribute('data-cuit', item.cuit);
                 tr.setAttribute('data-email', item.email || '');
@@ -508,7 +508,7 @@
             });
         }
 
-        // FUNCIÓN DE EXTRACCIÓN DIRECTA DESDE ATRIBUTOS HTML (100% EFECTIVA)
+        // LECTURA DIRECTA DE DATOS DESDE ATRIBUTOS HTML NATIVOS
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
