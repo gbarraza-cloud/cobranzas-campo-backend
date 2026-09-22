@@ -9,10 +9,10 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir la interfaz visual (index.html) desde el mismo backend
-app.use(express.static(path.join(__dirname)));
+// Servir el Frontend (index.html) desde el mismo servidor
+app.use(express.static(__dirname));
 
-// Configuración resiliente de PostgreSQL
+// Conexión resiliente a PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -54,9 +54,9 @@ async function initDB() {
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL inicializado.');
+    console.log('✅ Base de datos unificada conectada.');
   } catch (err) {
-    console.log('⚠️ Aviso DB (El servidor seguirá funcionando normalmente):', err.message);
+    console.log('⚠️ Aviso DB (El servidor de correos seguirá operando):', err.message);
   }
 }
 
@@ -140,9 +140,9 @@ app.post('/api/test-smtp', async (req, res) => {
       auth: { user: mail, pass: pass }
     });
     await transporter.verify();
-    res.json({ exito: true });
+    return res.json({ exito: true });
   } catch (err) {
-    res.status(400).json({ exito: false, error: err.message });
+    return res.status(400).json({ exito: false, error: err.message });
   }
 });
 
@@ -195,7 +195,7 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
     }
   }
 
-  res.json({ exito: true, enviados, errores });
+  return res.json({ exito: true, enviados, errores });
 });
 
 // Endpoint: Historial
@@ -203,13 +203,13 @@ app.get('/api/historial', async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) return res.json([]);
     const resultado = await pool.query('SELECT * FROM historial_gestiones_y_eventos ORDER BY fecha_registro DESC');
-    res.json(resultado.rows);
+    return res.json(resultado.rows);
   } catch (err) {
-    res.json([]);
+    return res.json([]);
   }
 });
 
-// Endpoint: Gestiones
+// Endpoint: Gestiones Individuales
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
@@ -232,19 +232,19 @@ app.post('/api/gestiones', async (req, res) => {
       }
       return res.status(201).json({ exito: true, gestion: resultado.rows[0] });
     }
-    res.status(201).json({ exito: true });
+    return res.status(201).json({ exito: true });
   } catch (err) {
-    res.status(500).json({ exito: false, error: err.message });
+    return res.status(500).json({ exito: false, error: err.message });
   }
 });
 
-// Ruta comodín para que sirva index.html
+// Entregar index.html en cualquier otra ruta
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor backend escuchando en puerto ${PORT}`);
+  console.log(`🚀 Servidor único activo escuchando en puerto ${PORT}`);
   initDB();
 });
