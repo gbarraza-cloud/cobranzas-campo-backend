@@ -9,7 +9,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir el Frontend estático
+// Servir la interfaz visual estática
 app.use(express.static(__dirname));
 
 // Configuración PostgreSQL
@@ -131,7 +131,7 @@ function generarCuerpoHTML(cliente, cuit, facturas, sucursal, emailRemitente) {
   </td></tr></table></div></body></html>`;
 }
 
-// Endpoint: Test SMTP
+// Test SMTP
 app.post('/api/test-smtp', async (req, res) => {
   const { mail, pass } = req.body;
   try {
@@ -146,27 +146,30 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
-// Endpoint: Enviar Correos Masivos ULTRARRÁPIDO
-app.post('/api/enviar-emails-masivos', async (req, res) => {
+// Endpoint: Enviar Correos Asíncrono e Inmediato
+app.post('/api/enviar-emails-masivos', (req, res) => {
   const { configSMTP, listaClientes, sucursal } = req.body;
   if (!configSMTP || !configSMTP.user || !configSMTP.pass) {
     return res.status(400).json({ exito: false, error: 'Credenciales SMTP incompletas.' });
   }
 
-  // Transporte reutilizable optimizado
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: { user: configSMTP.user, pass: configSMTP.pass },
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100
-  });
+  const clientesValidos = (listaClientes || []).filter(item => item.email && item.email.includes('@'));
 
-  const promesasEnvio = listaClientes
-    .filter(item => item.email && item.email.includes('@'))
-    .map(async (item) => {
+  // Responder a la pantalla en MENOS DE 1 SEGUNDO
+  res.json({ exito: true, enviados: clientesValidos.length, mensaje: "Procesando en segundo plano." });
+
+  // Procesamiento asíncrono e independiente en el servidor
+  setImmediate(async () => {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: { user: configSMTP.user, pass: configSMTP.pass },
+      pool: true,
+      maxConnections: 5
+    });
+
+    for (const item of clientesValidos) {
       const htmlBody = generarCuerpoHTML(item.cliente, item.cuit, item.facturas, sucursal, configSMTP.user);
 
       try {
@@ -177,7 +180,6 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
           html: htmlBody
         });
 
-        // Registro asíncrono sin bloquear el hilo principal
         if (process.env.DATABASE_URL) {
           pool.query(
             'INSERT INTO historial_envios_email (cliente_nombre, email_destino, estado_envio) VALUES ($1, $2, $3)',
@@ -191,19 +193,11 @@ app.post('/api/enviar-emails-masivos', async (req, res) => {
             [sucursal || 'CASA CENTRAL', item.cliente, item.cuit, 'Email', 'ENVIADO', 'Notificación automática enviada por correo', item.deudaTotal || 0.0]
           ).catch(() => {});
         }
-
-        return { exito: true };
       } catch (err) {
-        return { exito: false, cliente: item.cliente, error: err.message };
+        console.error(`❌ Error enviando a ${item.cliente}:`, err.message);
       }
-    });
-
-  // Ejecución en paralelo
-  const resultados = await Promise.all(promesasEnvio);
-  const enviados = resultados.filter(r => r.exito).length;
-  const errores = resultados.filter(r => !r.exito);
-
-  return res.json({ exito: true, enviados, errores });
+    }
+  });
 });
 
 // Endpoint: Historial
@@ -217,7 +211,7 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
-// Endpoint: Gestiones Individuales
+// Endpoint: Gestiones
 app.post('/api/gestiones', async (req, res) => {
   const { sucursal, cliente_nombre, cuit, canal, estado_gestion, fecha_promesa_pago, notas_observaciones, monto_deuda } = req.body;
   try {
@@ -252,6 +246,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor único activo escuchando en puerto ${PORT}`);
+  console.log(`🚀 Servidor único activo en puerto ${PORT}`);
   initDB();
 });
