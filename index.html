@@ -11,7 +11,6 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header Corporativo -->
     <header class="bg-slate-900 text-white p-4 shadow-md border-b-4 border-rose-700">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
@@ -49,7 +48,7 @@
             </button>
         </nav>
 
-        <!-- 1. PESTAÑA: CARGA MASIVA -->
+        <!-- 1. PESTAÑA: CARGA MASIVA Y CRUCE CSV -->
         <div id="tab-masivo" class="space-y-6">
             <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📂 Carga de Reporte de Deudas y Base de Clientes (.CSV)</h2>
@@ -106,7 +105,7 @@
             </section>
         </div>
 
-        <!-- 2. OMITIDOS -->
+        <!-- OMITIDOS -->
         <div id="tab-omitidos" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">⚠️ Clientes sin Correo Electrónico (Gestión WhatsApp)</h2>
             <div class="overflow-x-auto">
@@ -128,7 +127,7 @@
             </div>
         </div>
 
-        <!-- 3. HISTORIAL POSTGRESQL -->
+        <!-- HISTORIAL POSTGRESQL -->
         <div id="tab-historial" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h2 class="text-base font-bold text-slate-900">Historial de Auditoría PostgreSQL</h2>
@@ -152,7 +151,7 @@
             </div>
         </div>
 
-        <!-- 4. CALENDARIO GENERAL -->
+        <!-- CALENDARIO -->
         <div id="tab-calendario" class="hidden bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <h2 class="text-base font-bold text-slate-900 border-b pb-3 mb-4">📅 Calendario General de Compromisos de Pago</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,7 +168,7 @@
             </div>
         </div>
 
-        <!-- 5. MÉTRICAS -->
+        <!-- MÉTRICAS -->
         <div id="tab-metricas" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-lg border shadow-sm">
@@ -401,10 +400,10 @@
 
                 tr.innerHTML = `
                     <td class="p-2.5"><input type="checkbox" class="chk-cliente" ${marcarTodos && tieneEmail ? 'checked' : ''} ${!tieneEmail ? 'disabled' : ''}></td>
-                    <td class="p-2.5 font-bold celda-cliente">${item.cliente}</td>
-                    <td class="p-2.5 celda-cuit">${item.cuit}</td>
-                    <td class="p-2.5 font-bold text-rose-700 celda-monto" data-monto="${item.deudaTotal}">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-                    <td class="p-2.5 celda-email">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
+                    <td class="p-2.5 font-bold celda-nombre-cliente">${item.cliente}</td>
+                    <td class="p-2.5 celda-cuit-cliente">${item.cuit}</td>
+                    <td class="p-2.5 font-bold text-rose-700 celda-monto-cliente" data-monto="${item.deudaTotal}">$${item.deudaTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2.5 celda-email-cliente">${tieneEmail ? item.email : '<span class="text-amber-600 font-bold">Sin Correo</span>'}</td>
                     <td class="p-2.5"><button onclick="alert('Comprobantes: ${item.facturas.map(f => f.comprobante).join(', ')}')" class="bg-slate-200 text-slate-800 px-2 py-1 rounded text-[10px]">Detalle</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -478,7 +477,7 @@
             cargarHistorial();
         }
 
-        // LECTURA DIRECTA DE LAS CELDAS VISIBLES DE LA TABLA (100% GARANTIZADO)
+        // BÚSQUEDA DIRECTA POR OBJETO O POR LECTURA DE FILAS
         async function dispararEnvioSMTPBackend() {
             const mail = localStorage.getItem('cfg_email');
             const pass = localStorage.getItem('cfg_pass');
@@ -496,39 +495,45 @@
             filasTabla.forEach(row => {
                 const chk = row.querySelector('.chk-cliente');
                 if (chk && chk.checked) {
-                    const nomCli = row.querySelector('.celda-cliente')?.innerText.trim() || '';
-                    const cuitCli = row.querySelector('.celda-cuit')?.innerText.trim() || '—';
-                    const emailCli = row.querySelector('.celda-email')?.innerText.trim() || '';
-                    const montoRaw = row.querySelector('.celda-monto')?.getAttribute('data-monto') || '0';
+                    const nomCli = row.querySelector('.celda-nombre-cliente')?.innerText.trim() || '';
+                    const cuitCli = row.querySelector('.celda-cuit-cliente')?.innerText.trim() || '—';
+                    const emailCli = row.querySelector('.celda-email-cliente')?.innerText.trim() || '';
+                    const celdaMonto = row.querySelector('.celda-monto-cliente');
+                    const montoVal = celdaMonto ? parseFloat(celdaMonto.getAttribute('data-monto')) || 0 : 0;
 
                     if (emailCli && emailCli.includes('@')) {
-                        // Buscamos si tenemos facturas desglosadas o armamos la factura global
-                        let facturasCli = [{ comprobante: 'Resumen de Saldos Pendientes', monto: parseFloat(montoRaw) || 0 }];
-                        
-                        const itemOriginal = Object.values(globalClientesCruceMap).find(c => c.cliente.toUpperCase() === nomCli.toUpperCase());
-                        if (itemOriginal && itemOriginal.facturas && itemOriginal.facturas.length > 0) {
-                            facturasCli = itemOriginal.facturas;
+                        // Buscamos si existe en el mapa de memoria
+                        let itemOriginal = null;
+                        for (let k in globalClientesCruceMap) {
+                            if (k.toUpperCase() === nomCli.toUpperCase()) {
+                                itemOriginal = globalClientesCruceMap[k];
+                                break;
+                            }
                         }
 
-                        seleccionados.push({
-                            cliente: nomCli,
-                            cuit: cuitCli,
-                            email: emailCli,
-                            deudaTotal: parseFloat(montoRaw) || 0,
-                            facturas: facturasCli
-                        });
+                        if (itemOriginal) {
+                            seleccionados.push(itemOriginal);
+                        } else {
+                            seleccionados.push({
+                                cliente: nomCli,
+                                cuit: cuitCli,
+                                email: emailCli,
+                                deudaTotal: montoVal,
+                                facturas: [{ comprobante: 'Resumen de Saldos Pendientes', monto: montoVal }]
+                            });
+                        }
                     }
                 }
             });
 
             if (seleccionados.length === 0) {
-                alert('⚠️ Por favor tilda al menos un cliente con correo electrónico válido.');
+                alert('⚠️ Por favor tilda al menos un cliente con correo electrónico registrado.');
                 return;
             }
 
             const btnEnvio = document.getElementById('btn-enviar-smtp');
             btnEnvio.disabled = true;
-            btnEnvio.innerText = '⏳ Enviando correo en tiempo real...';
+            btnEnvio.innerText = '⏳ Enviando correos en tiempo real...';
 
             try {
                 const res = await fetch(`/api/enviar-emails-masivos`, {
